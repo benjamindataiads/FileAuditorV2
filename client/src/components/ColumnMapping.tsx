@@ -24,50 +24,92 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
   useEffect(() => {
     const readHeaders = async () => {
       try {
-        // Read first line of the file to get headers
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           const content = e.target?.result as string;
-          const firstLine = content.split('\n')[0];
-          const headers = firstLine.split('\t');
+          const lines = content.split('\n');
+          const headers = lines[0].split('\t');
           setHeaders(headers);
+          
+          // Get sample values for each column (up to 5 rows)
+          const sampleData: Record<string, string[]> = {};
+          headers.forEach((header, index) => {
+            sampleData[header] = lines.slice(1, 6).map(line => 
+              line.split('\t')[index]?.trim() || ''
+            ).filter(Boolean);
+          });
           
           // Initialize mapping with auto-detected matches
           const initialMapping: Record<string, string> = {};
+          const usedFields = new Set<string>();
+          
+          // First pass: exact matches
           headers.forEach(header => {
-            // Try exact match first (case insensitive)
-            let matchingField = availableFields.find(
-              field => field.toLowerCase() === header.toLowerCase()
+            const matchingField = availableFields.find(field => 
+              !usedFields.has(field) && 
+              field.toLowerCase() === header.toLowerCase()
             );
-
-            // If no exact match, try partial match
-            if (!matchingField) {
-              matchingField = availableFields.find(field => 
-                header.toLowerCase().includes(field.toLowerCase()) ||
-                field.toLowerCase().includes(header.toLowerCase())
-              );
-            }
-
-            // If still no match, try matching words
-            if (!matchingField) {
-              const headerWords = header.toLowerCase().split(/[_\s-]+/);
-              matchingField = availableFields.find(field => {
-                const fieldWords = field.toLowerCase().split(/[_\s-]+/);
-                return headerWords.some(word => 
-                  fieldWords.some(fieldWord => 
-                    word.includes(fieldWord) || fieldWord.includes(word)
-                  )
-                );
-              });
-            }
-
+            
             if (matchingField) {
               initialMapping[header] = matchingField;
+              usedFields.add(matchingField);
             }
           });
-          setMapping(initialMapping);
           
-          // Notify parent of initial mappings
+          // Second pass: content-based matches for unmapped headers
+          headers.forEach(header => {
+            if (initialMapping[header]) return;
+            
+            const columnValues = sampleData[header].join(' ').toLowerCase();
+            let bestMatch = '';
+            let bestScore = 0;
+            
+            availableFields.forEach(field => {
+              if (usedFields.has(field)) return;
+              
+              // Calculate match score based on field name and sample values
+              let score = 0;
+              const fieldLower = field.toLowerCase();
+              const headerLower = header.toLowerCase();
+              
+              // Check header name similarity
+              if (headerLower.includes(fieldLower) || fieldLower.includes(headerLower)) {
+                score += 2;
+              }
+              
+              // Check content patterns
+              if (field === 'price' && columnValues.match(/[\d.,]+(?:\s*(?:€|\$|EUR|USD))?/)) {
+                score += 3;
+              } else if (field === 'date' && columnValues.match(/\d{4}[-/]\d{2}[-/]\d{2}/)) {
+                score += 3;
+              } else if (field === 'url' && columnValues.match(/https?:\/\//)) {
+                score += 3;
+              }
+              
+              // Word matching
+              const fieldWords = fieldLower.split(/[_\s-]+/);
+              const headerWords = headerLower.split(/[_\s-]+/);
+              fieldWords.forEach(fieldWord => {
+                if (headerWords.some(headerWord => 
+                  headerWord.includes(fieldWord) || fieldWord.includes(headerWord)
+                )) {
+                  score += 1;
+                }
+              });
+              
+              if (score > bestScore) {
+                bestScore = score;
+                bestMatch = field;
+              }
+            });
+            
+            if (bestScore >= 2) {  // Minimum threshold for auto-mapping
+              initialMapping[header] = bestMatch;
+              usedFields.add(bestMatch);
+            }
+          });
+          
+          setMapping(initialMapping);
           onMappingComplete(initialMapping);
         };
         reader.readAsText(file);
@@ -121,11 +163,13 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
                     <SelectValue placeholder="Select a field" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableFields.map((field) => (
-                      <SelectItem key={field} value={field}>
-                        {field} ({getFrenchFieldName(field)})
-                      </SelectItem>
-                    ))}
+                    {availableFields
+                      .filter(field => !Object.values(mapping).includes(field) || mapping[header] === field)
+                      .map((field) => (
+                        <SelectItem key={field} value={field}>
+                          {field} ({getFrenchFieldName(field)})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
