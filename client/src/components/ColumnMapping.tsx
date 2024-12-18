@@ -12,6 +12,8 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  useDroppable,
+  useDraggable,
 } from "@dnd-kit/core";
 import { ArrowRight } from "lucide-react";
 
@@ -208,18 +210,63 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
     );
   }
 
-  const getItemStyle = (itemType: 'column' | 'field', id: string) => {
-    const isColumn = itemType === 'column';
-    const baseStyles = "p-3 rounded-md border cursor-move transition-colors";
-    const mappedField = isColumn ? mapping[id.replace('column-', '')] : 
-      Object.entries(mapping).find(([_, field]) => field === id.replace('field-', ''))?.[0];
-    
-    if (mappedField) {
-      return `${baseStyles} bg-primary/10 border-primary/20`;
-    }
-    
-    return `${baseStyles} bg-card hover:bg-accent/50`;
-  };
+  function DraggableColumn({ header }: { header: string }) {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+      id: `column-${header}`,
+    });
+
+    return (
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        className={`p-3 rounded-md border cursor-move transition-colors ${
+          isDragging ? 'opacity-50' : ''
+        } ${mapping[header] ? 'bg-primary/10 border-primary/20' : 'bg-card hover:bg-accent/50'}`}
+      >
+        <div className="font-medium">{header}</div>
+        {mapping[header] && (
+          <Badge variant="outline" className="mt-1">
+            Mapped to: {mapping[header]}
+          </Badge>
+        )}
+      </div>
+    );
+  }
+
+  function DroppableField({ field }: { field: string }) {
+    const { setNodeRef, isOver } = useDroppable({
+      id: `field-${field}`,
+    });
+
+    const mappedColumn = Object.entries(mapping).find(([_, f]) => f === field)?.[0];
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={`p-3 rounded-md border transition-colors ${
+          isOver ? 'bg-primary/20 border-primary' : 
+          mappedColumn ? 'bg-primary/10 border-primary/20' : 
+          'bg-card hover:bg-accent/50'
+        }`}
+      >
+        <div className="font-medium">{field}</div>
+        <div className="text-sm text-muted-foreground">
+          {getFrenchFieldName(field)}
+        </div>
+        {!mappedColumn && (
+          <div className="mt-2 border-2 border-dashed border-muted-foreground/20 rounded-md p-2 text-sm text-muted-foreground text-center">
+            Drop a column here
+          </div>
+        )}
+        {mappedColumn && (
+          <Badge variant="outline" className="mt-2">
+            Mapped from: {mappedColumn}
+          </Badge>
+        )}
+      </div>
+    );
+  }
 
   return (
     <DndContext
@@ -235,18 +282,7 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
           </CardHeader>
           <CardContent className="space-y-2">
             {headers.map((header) => (
-              <div
-                key={`column-${header}`}
-                id={`column-${header}`}
-                className={getItemStyle('column', `column-${header}`)}
-              >
-                <div className="font-medium">{header}</div>
-                {mapping[header] && (
-                  <Badge variant="outline" className="mt-1">
-                    Mapped to: {mapping[header]}
-                  </Badge>
-                )}
-              </div>
+              <DraggableColumn key={header} header={header} />
             ))}
           </CardContent>
         </Card>
@@ -263,18 +299,7 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
           </CardHeader>
           <CardContent className="space-y-2">
             {availableFields.map((field) => (
-              <div
-                key={`field-${field}`}
-                id={`field-${field}`}
-                className={getItemStyle('field', `field-${field}`)}
-              >
-                <div className="font-medium">
-                  {field}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {getFrenchFieldName(field)}
-                </div>
-              </div>
+              <DroppableField key={field} field={field} />
             ))}
           </CardContent>
         </Card>
