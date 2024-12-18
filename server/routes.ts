@@ -1,11 +1,8 @@
 import type { Express } from "express";
-import { eq } from "drizzle-orm";
-import { db } from "@db";
-import { rules, audits, auditResults } from "@db/schema";
 import { createServer, type Server } from "http";
+import { eq } from "drizzle-orm";
 import { db } from "@db";
 import { rules, audits, auditResults } from "@db/schema";
-import { eq } from "drizzle-orm";
 import multer from "multer";
 import { parse } from "csv-parse";
 import crypto from "crypto";

@@ -26,9 +26,26 @@ const formSchema = z.object({
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   condition: z.object({
-    type: z.enum(["notEmpty", "minLength", "contains"]),
-    field: z.string().min(1, "Field is required"),
-    value: z.any().optional(),
+    type: z.enum(["notEmpty", "minLength", "contains"], {
+      required_error: "Please select a condition type",
+    }),
+    field: z.string().min(1, "Field name is required"),
+    value: z.union([
+      z.string(),
+      z.number(),
+      z.undefined()
+    ]).optional(),
+  }).refine((data) => {
+    if (data.type === "minLength") {
+      return typeof data.value === "number" && data.value > 0;
+    }
+    if (data.type === "contains") {
+      return typeof data.value === "string" && data.value.length > 0;
+    }
+    return true;
+  }, {
+    message: "Invalid value for the selected condition type",
+    path: ["value"],
   }),
   criticality: z.enum(["warning", "critical"]),
 });
@@ -94,7 +111,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 <Input {...field} />
               </FormControl>
               <FormDescription>
-                E.g., "Mandatory Fields", "Content Quality"
+                Choose a category to organize rules, such as "Mandatory Fields", "Content Quality", "Cross-field Validation"
               </FormDescription>
               <FormMessage />
             </FormItem>
