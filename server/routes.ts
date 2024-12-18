@@ -268,13 +268,25 @@ function evaluateRule(product: any, rule: any) {
 
   // Helper function to safely get field value with bilingual support
   const getFieldValue = (fieldName: string) => {
-    // Try to get value using English field name
+    // Try to get value using English field name first
     let value = product[fieldName];
     
-    // If not found, try to get French equivalent and look up that value
-    if ((value === undefined || value === null) && fieldMappings[fieldName]) {
-      const frenchFieldName = fieldMappings[fieldName].fr;
-      value = product[frenchFieldName];
+    // If not found and it's a known field, try the French equivalent
+    if (value === undefined || value === null) {
+      // Check if this is a known field mapping
+      const mapping = fieldMappings[fieldName];
+      if (mapping) {
+        // Try the French field name
+        value = product[mapping.fr];
+      } else {
+        // If not found in mappings, check if it was provided in French and get English equivalent
+        const englishFieldName = Object.entries(fieldMappings).find(
+          ([_, mapping]) => mapping.fr === fieldName
+        )?.[0];
+        if (englishFieldName) {
+          value = product[englishFieldName];
+        }
+      }
     }
     
     return value === undefined || value === null ? "" : String(value);
