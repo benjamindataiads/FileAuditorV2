@@ -254,52 +254,102 @@ function evaluateRule(product: any, rule: any) {
   let status = "ok";
   let details = "";
 
-  switch (condition.type) {
-    case "notEmpty":
-      if (!product[condition.field]) {
-        status = rule.criticality;
-        details = `Field ${condition.field} is empty`;
-      }
-      break;
-    case "minLength":
-      if (!product[condition.field] || product[condition.field].length < condition.value) {
-        status = rule.criticality;
-        details = `Field ${condition.field} is shorter than ${condition.value} characters`;
-      }
-      break;
-    case "contains":
-      if (!product[condition.field]?.toLowerCase().includes(product[condition.value]?.toLowerCase())) {
-        status = rule.criticality;
-        details = `Field ${condition.field} does not contain ${condition.value}`;
-      }
-      break;
-    case "regex":
-      try {
-        const regex = new RegExp(condition.value);
-        if (!product[condition.field] || !regex.test(product[condition.field])) {
+  // Helper function to safely get field value
+  const getFieldValue = (fieldName: string) => {
+    const value = product[fieldName];
+    return value === undefined || value === null ? "" : String(value);
+  };
+
+  // Helper function for case-insensitive comparison
+  const compareValues = (value1: string, value2: string, operator: string) => {
+    const v1 = value1.toLowerCase();
+    const v2 = value2.toLowerCase();
+    
+    switch (operator) {
+      case "==": return v1 === v2;
+      case "!=": return v1 !== v2;
+      case ">": return parseFloat(v1) > parseFloat(v2);
+      case ">=": return parseFloat(v1) >= parseFloat(v2);
+      case "<": return parseFloat(v1) < parseFloat(v2);
+      case "<=": return parseFloat(v1) <= parseFloat(v2);
+      default: return false;
+    }
+  };
+
+  try {
+    const fieldValue = getFieldValue(condition.field);
+
+    switch (condition.type) {
+      case "notEmpty":
+        if (!fieldValue.trim()) {
           status = rule.criticality;
-          details = `Field ${condition.field} does not match pattern ${condition.value}`;
+          details = `Field '${condition.field}' is empty or contains only whitespace`;
         }
-      } catch (e) {
-        status = "warning";
-        details = `Invalid regex pattern: ${condition.value}`;
-      }
-      break;
-    case "range":
-      const num = parseFloat(product[condition.field]);
-      if (isNaN(num) || num < condition.value.min || num > condition.value.max) {
-        status = rule.criticality;
-        details = `Field ${condition.field} is not within range ${condition.value.min}-${condition.value.max}`;
-      }
-      break;
-    case "crossField":
-      const compareField = product[condition.value.field];
-      const mainField = product[condition.field];
-      if (!compareField || !mainField || !eval(`"${mainField}" ${condition.value.operator} "${compareField}"`)) {
-        status = rule.criticality;
-        details = `Field ${condition.field} ${condition.value.operator} ${condition.value.field} condition not met`;
-      }
-      break;
+        break;
+
+      case "minLength":
+        if (fieldValue.length < condition.value) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' has ${fieldValue.length} characters (minimum required: ${condition.value})`;
+        }
+        break;
+
+      case "contains":
+        const searchValue = condition.value.toLowerCase();
+        if (!fieldValue.toLowerCase().includes(searchValue)) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' does not contain '${condition.value}'`;
+        }
+        break;
+
+      case "regex":
+        try {
+          const regex = new RegExp(condition.value, 'i'); // Case insensitive by default
+          if (!regex.test(fieldValue)) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' does not match pattern '${condition.value}'`;
+          }
+        } catch (e) {
+          status = "warning";
+          details = `Invalid regex pattern: ${condition.value}`;
+        }
+        break;
+
+      case "range":
+        const num = parseFloat(fieldValue);
+        const { min, max } = condition.value;
+        if (isNaN(num)) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' value '${fieldValue}' is not a valid number`;
+        } else if (num < min || num > max) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' value ${num} is not within range ${min}-${max}`;
+        }
+        break;
+
+      case "crossField":
+        const { field: compareFieldName, operator } = condition.value;
+        const compareFieldValue = getFieldValue(compareFieldName);
+        
+        if (!compareValues(fieldValue, compareFieldValue, operator)) {
+          const operatorMap = {
+            "==": "equal to",
+            "!=": "not equal to",
+            ">": "greater than",
+            ">=": "greater than or equal to",
+            "<": "less than",
+            "<=": "less than or equal to"
+          } as const;
+
+          const operatorText = operatorMap[operator as keyof typeof operatorMap];
+          status = rule.criticality;
+          details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
+        }
+        break;
+    }
+  } catch (error: unknown) {
+    status = "warning";
+    details = `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`;
   }
 
   return { status, details };
