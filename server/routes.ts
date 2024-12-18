@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { eq } from "drizzle-orm";
 import { db } from "@db";
 import { rules, audits, auditResults } from "@db/schema";
+import type { FieldMapping } from "../client/src/lib/fieldMappings";
+import { fieldMappings, validateAndNormalizeFieldName } from "../client/src/lib/fieldMappings";
 import multer from "multer";
 import { parse as csvParse } from "csv-parse/sync";
 import { parse as dateParse, isValid } from "date-fns";
@@ -264,9 +266,17 @@ function evaluateRule(product: any, rule: any) {
   let status = "ok";
   let details = "";
 
-  // Helper function to safely get field value
+  // Helper function to safely get field value with bilingual support
   const getFieldValue = (fieldName: string) => {
-    const value = product[fieldName];
+    // Try to get value using English field name
+    let value = product[fieldName];
+    
+    // If not found, try to get French equivalent and look up that value
+    if ((value === undefined || value === null) && fieldMappings[fieldName]) {
+      const frenchFieldName = fieldMappings[fieldName].fr;
+      value = product[frenchFieldName];
+    }
+    
     return value === undefined || value === null ? "" : String(value);
   };
 

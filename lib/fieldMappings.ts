@@ -1,3 +1,4 @@
+// Define the structure of field mapping
 export interface FieldMapping {
   en: string;
   fr: string;
