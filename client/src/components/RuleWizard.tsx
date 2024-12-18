@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Rule } from "@/lib/types";
-import { getFieldNames, getFrenchFieldName, type FieldMapping } from "@/lib/fieldMappings";
+import { getFieldNames } from "@/lib/fieldMappings";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -113,9 +113,6 @@ interface RuleWizardProps {
   onSubmit: (values: Omit<Rule, "id" | "createdAt">) => void;
   isSubmitting?: boolean;
 }
-
-
-
 
 export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
   const form = useForm<z.infer<typeof formSchema>>({
@@ -372,15 +369,24 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 case "crossField":
                   inputElement = (
                     <div className="space-y-2">
-                      <Input
-                        placeholder="Field name to compare"
-                        onChange={(e) => {
-                          const compareField = e.target.value;
+                      <Select
+                        onValueChange={(compareField) => {
                           const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
                           field.onChange(JSON.stringify({ ...current, field: compareField }));
                         }}
                         value={field.value ? JSON.parse(field.value).field || "" : ""}
-                      />
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select field to compare" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getFieldNames().map((fieldName) => (
+                            <SelectItem key={fieldName} value={fieldName}>
+                              {fieldName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Select
                         onValueChange={(operator) => {
                           const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };

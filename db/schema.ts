@@ -1,6 +1,16 @@
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
+import { z } from "zod";
+
+// Define the condition schema for better type safety
+const ruleConditionSchema = z.object({
+  type: z.enum(["notEmpty", "minLength", "contains", "regex", "range", "crossField", "date"]),
+  field: z.string(),
+  value: z.any().optional(),
+  caseSensitive: z.boolean().optional(),
+  dateFormat: z.string().optional(),
+});
 
 // Rules table to store rule templates
 export const rules = pgTable("rules", {
@@ -8,7 +18,7 @@ export const rules = pgTable("rules", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   category: text("category").notNull(),
-  condition: jsonb("condition").notNull(), // {type: string, field: string, value: any}
+  condition: jsonb("condition").$type<z.infer<typeof ruleConditionSchema>>().notNull(),
   criticality: text("criticality").notNull(), // "warning" | "critical"
   createdAt: timestamp("created_at").defaultNow(),
 });
