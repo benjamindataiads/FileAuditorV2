@@ -1,0 +1,72 @@
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { relations } from "drizzle-orm";
+
+// Rules table to store rule templates
+export const rules = pgTable("rules", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  condition: jsonb("condition").notNull(), // {type: string, field: string, value: any}
+  criticality: text("criticality").notNull(), // "warning" | "critical"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Audits table to store audit history
+export const audits = pgTable("audits", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  fileHash: text("file_hash").notNull(),
+  totalProducts: integer("total_products").notNull(),
+  compliantProducts: integer("compliant_products").notNull(),
+  warningProducts: integer("warning_products").notNull(),
+  criticalProducts: integer("critical_products").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Audit results table to store detailed results
+export const auditResults = pgTable("audit_results", {
+  id: serial("id").primaryKey(),
+  auditId: integer("audit_id").references(() => audits.id).notNull(),
+  ruleId: integer("rule_id").references(() => rules.id).notNull(),
+  productId: text("product_id").notNull(),
+  status: text("status").notNull(), // "ok" | "warning" | "critical"
+  details: text("details"),
+});
+
+// Relations
+export const auditRelations = relations(audits, ({ many }) => ({
+  results: many(auditResults),
+}));
+
+export const ruleRelations = relations(rules, ({ many }) => ({
+  results: many(auditResults),
+}));
+
+export const auditResultRelations = relations(auditResults, ({ one }) => ({
+  audit: one(audits, {
+    fields: [auditResults.auditId],
+    references: [audits.id],
+  }),
+  rule: one(rules, {
+    fields: [auditResults.ruleId],
+    references: [rules.id],
+  }),
+}));
+
+// Schemas
+export const insertRuleSchema = createInsertSchema(rules);
+export const selectRuleSchema = createSelectSchema(rules);
+export const insertAuditSchema = createInsertSchema(audits);
+export const selectAuditSchema = createSelectSchema(audits);
+export const insertAuditResultSchema = createInsertSchema(auditResults);
+export const selectAuditResultSchema = createSelectSchema(auditResults);
+
+// Types
+export type Rule = typeof rules.$inferSelect;
+export type InsertRule = typeof rules.$inferInsert;
+export type Audit = typeof audits.$inferSelect;
+export type InsertAudit = typeof audits.$inferInsert;
+export type AuditResult = typeof auditResults.$inferSelect;
+export type InsertAuditResult = typeof auditResults.$inferInsert;
