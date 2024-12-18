@@ -8,14 +8,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { ValidationPreview } from "@/components/ValidationPreview";
+import { ColumnMapping } from "@/components/ColumnMapping";
 import type { Rule } from "@/lib/types";
 
-type Step = "upload" | "rules" | "processing";
+type Step = "upload" | "mapping" | "rules" | "processing";
 
 export function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [selectedRules, setSelectedRules] = useState<number[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [, setLocation] = useLocation();
   const [previewKey, setPreviewKey] = useState(0);
 
@@ -66,9 +68,15 @@ export function Home() {
 
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
-    setCurrentStep("rules");
+    setCurrentStep("mapping");
+    setColumnMapping({});
     // Reset preview when a new file is uploaded
     setPreviewKey(prev => prev + 1);
+  };
+
+  const handleMappingComplete = (mapping: Record<string, string>) => {
+    setColumnMapping(mapping);
+    setCurrentStep("rules");
   };
 
   // Trigger preview validation when rules or file changes
@@ -88,6 +96,7 @@ export function Home() {
     const formData = new FormData();
     formData.append("file", uploadedFile);
     formData.append("rules", JSON.stringify(selectedRules));
+    formData.append("columnMapping", JSON.stringify(columnMapping));
     uploadMutation.mutate(formData);
   };
 
@@ -111,6 +120,33 @@ export function Home() {
           100
         } />
       </div>
+
+      {currentStep === "mapping" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Step 2: Map File Columns</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ColumnMapping
+              file={uploadedFile!}
+              onMappingComplete={handleMappingComplete}
+            />
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" onClick={goBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+            <Button
+              onClick={() => setCurrentStep("rules")}
+              disabled={Object.keys(columnMapping).length === 0}
+            >
+              Continue
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
 
       {currentStep === "upload" && (
         <Card>

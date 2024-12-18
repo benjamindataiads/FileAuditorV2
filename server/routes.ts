@@ -13,8 +13,14 @@ import crypto from "crypto";
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Helper function to validate a single product
-async function validateProduct(product: any, selectedRuleIds: number[]) {
+async function validateProduct(product: any, selectedRuleIds: number[], columnMapping: Record<string, string>) {
   const results = [];
+  
+  // Create a mapped product with our field names
+  const mappedProduct: Record<string, any> = {};
+  Object.entries(columnMapping).forEach(([fileColumn, appField]) => {
+    mappedProduct[appField] = product[fileColumn];
+  });
   
   for (const ruleId of selectedRuleIds) {
     const rule = await db.query.rules.findFirst({
@@ -23,9 +29,9 @@ async function validateProduct(product: any, selectedRuleIds: number[]) {
 
     if (!rule) continue;
 
-    const result = evaluateRule(product, rule);
+    const result = evaluateRule(mappedProduct, rule);
     results.push({
-      productId: product.id || "unknown",
+      productId: mappedProduct.id || product.id || "unknown",
       fieldName: rule.condition.field,
       status: result.status,
       details: result.details,
@@ -186,6 +192,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const fileContent = req.file.buffer.toString();
       const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
+      const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
       const previewLimit = 5; // Limit preview to first 5 products
       
       const parser = csvParse(fileContent, {
@@ -199,7 +206,7 @@ export function registerRoutes(app: Express): Server {
       
       for await (const record of parser) {
         products.push(record);
-        const productResults = await validateProduct(record, selectedRules);
+        const productResults = await validateProduct(record, selectedRules, columnMapping);
         results.push(...productResults);
       }
 
