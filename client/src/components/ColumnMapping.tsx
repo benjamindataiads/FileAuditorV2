@@ -1,14 +1,19 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getFieldNames, getFrenchFieldName } from "@/lib/fieldMappings";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { ArrowRight } from "lucide-react";
 
 interface ColumnMappingProps {
   file: File;
@@ -16,10 +21,21 @@ interface ColumnMappingProps {
   isLoading?: boolean;
 }
 
+interface DraggableItem {
+  id: string;
+  type: "column" | "field";
+  content: string;
+}
+
 export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMappingProps) {
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [activeId, setActiveId] = useState<string | null>(null);
   const availableFields = getFieldNames();
+  
+  const mouseSensor = useSensor(MouseSensor);
+  const touchSensor = useSensor(TouchSensor);
+  const sensors = useSensors(mouseSensor, touchSensor);
 
   useEffect(() => {
     const readHeaders = async () => {
@@ -143,40 +159,145 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
     );
   }
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const activeItem = active.id as string;
+    const overItem = over.id as string;
+    
+    // Only allow dragging from columns to fields or vice versa
+    const activeType = activeItem.startsWith('column-') ? 'column' : 'field';
+    const overType = overItem.startsWith('column-') ? 'column' : 'field';
+    
+    if (activeType === overType) return;
+
+    const columnId = activeType === 'column' ? activeItem : overItem;
+    const fieldId = activeType === 'field' ? activeItem : overItem;
+    
+    const header = columnId.replace('column-', '');
+    const field = fieldId.replace('field-', '');
+    
+    const newMapping = { ...mapping };
+    
+    // Remove any existing mappings for this field
+    Object.entries(newMapping).forEach(([key, value]) => {
+      if (value === field) {
+        delete newMapping[key];
+      }
+    });
+    
+    newMapping[header] = field;
+    setMapping(newMapping);
+    onMappingComplete(newMapping);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  const getItemStyle = (itemType: 'column' | 'field', id: string) => {
+    const isColumn = itemType === 'column';
+    const baseStyles = "p-3 rounded-md border cursor-move transition-colors";
+    const mappedField = isColumn ? mapping[id.replace('column-', '')] : 
+      Object.entries(mapping).find(([_, field]) => field === id.replace('field-', ''))?.[0];
+    
+    if (mappedField) {
+      return `${baseStyles} bg-primary/10 border-primary/20`;
+    }
+    
+    return `${baseStyles} bg-card hover:bg-accent/50`;
+  };
+
   return (
-    <div className="space-y-4">
-      {headers.map((header) => (
-        <Card key={header}>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <p className="text-sm font-medium mb-1">File Column:</p>
-                <p className="text-base">{header}</p>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="grid grid-cols-[1fr,auto,1fr] gap-8">
+        {/* File Columns */}
+        <Card>
+          <CardHeader>
+            <CardTitle>File Columns</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {headers.map((header) => (
+              <div
+                key={`column-${header}`}
+                id={`column-${header}`}
+                className={getItemStyle('column', `column-${header}`)}
+              >
+                <div className="font-medium">{header}</div>
+                {mapping[header] && (
+                  <Badge variant="outline" className="mt-1">
+                    Mapped to: {mapping[header]}
+                  </Badge>
+                )}
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium mb-1">Map to Field:</p>
-                <Select
-                  value={mapping[header] || ""}
-                  onValueChange={(value) => handleMappingChange(header, value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a field" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableFields
-                      .filter(field => !Object.values(mapping).includes(field) || mapping[header] === field)
-                      .map((field) => (
-                        <SelectItem key={field} value={field}>
-                          {field} ({getFrenchFieldName(field)})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            ))}
           </CardContent>
         </Card>
-      ))}
-    </div>
+
+        {/* Arrow */}
+        <div className="flex items-center justify-center">
+          <ArrowRight className="h-6 w-6 text-muted-foreground" />
+        </div>
+
+        {/* Available Fields */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Available Fields</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {availableFields.map((field) => (
+              <div
+                key={`field-${field}`}
+                id={`field-${field}`}
+                className={getItemStyle('field', `field-${field}`)}
+              >
+                <div className="font-medium">
+                  {field}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {getFrenchFieldName(field)}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <DragOverlay>
+          {activeId ? (
+            <div className="p-3 rounded-md border bg-background shadow-lg">
+              {activeId.startsWith('column-') ? (
+                activeId.replace('column-', '')
+              ) : (
+                <div>
+                  <div className="font-medium">
+                    {activeId.replace('field-', '')}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {getFrenchFieldName(activeId.replace('field-', ''))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </div>
+    </DndContext>
   );
 }
