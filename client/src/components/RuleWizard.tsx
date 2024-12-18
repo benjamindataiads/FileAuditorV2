@@ -376,7 +376,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                         }}
                         value={field.value ? JSON.parse(field.value).field || "" : ""}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select field to compare" />
                         </SelectTrigger>
                         <SelectContent>
