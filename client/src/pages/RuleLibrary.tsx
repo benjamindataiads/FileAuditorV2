@@ -69,6 +69,15 @@ export function RuleLibrary() {
         return `${condition.field} must be at least ${condition.value} characters`;
       case "contains":
         return `${condition.field} must contain ${condition.value}`;
+      case "regex":
+        return `${condition.field} must match pattern: ${condition.value}`;
+      case "range":
+        const { min, max } = condition.value;
+        return `${condition.field} must be between ${min} and ${max}`;
+      case "crossField":
+        return `${condition.field} must match ${condition.value.field}`;
+      case "date":
+        return `${condition.field} must be a valid date${condition.dateFormat ? ` (${condition.dateFormat})` : ''}`;
       default:
         return "Unknown condition";
     }
