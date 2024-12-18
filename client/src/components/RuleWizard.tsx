@@ -371,10 +371,17 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                     <div className="space-y-2">
                       <Select
                         onValueChange={(operator) => {
-                          const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
-                          field.onChange(JSON.stringify({ ...current, operator }));
+                          const current = field.value ? 
+                            (typeof field.value === 'string' ? JSON.parse(field.value) : field.value) 
+                            : { field: "", operator: "==" };
+                          field.onChange({ ...current, operator });
                         }}
-                        value={field.value ? JSON.parse(field.value).operator : "=="}
+                        value={
+                          field.value ? 
+                            (typeof field.value === 'string' ? 
+                              JSON.parse(field.value).operator : field.value.operator) 
+                            : "=="
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select operator" />
@@ -391,10 +398,17 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                       </Select>
                       <Select
                         onValueChange={(compareField) => {
-                          const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
-                          field.onChange(JSON.stringify({ ...current, field: compareField }));
+                          const current = field.value ? 
+                            (typeof field.value === 'string' ? JSON.parse(field.value) : field.value)
+                            : { field: "", operator: "==" };
+                          field.onChange({ ...current, field: compareField });
                         }}
-                        value={field.value ? JSON.parse(field.value).field || "" : ""}
+                        value={
+                          field.value ? 
+                            (typeof field.value === 'string' ? 
+                              JSON.parse(field.value).field : field.value.field) || "" 
+                            : ""
+                        }
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select field to compare" />
