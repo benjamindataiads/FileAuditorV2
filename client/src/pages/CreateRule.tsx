@@ -17,20 +17,28 @@ export function CreateRule() {
 
   const createMutation = useMutation({
     mutationFn: async (rule: Omit<Rule, "id" | "createdAt">) => {
-      const response = await fetch("/api/rules", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(rule),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create rule");
+      console.log('Submitting rule:', rule);
+      try {
+        const response = await fetch("/api/rules", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(rule),
+        });
+        
+        const data = await response.json();
+        console.log('API response:', data);
+        
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to create rule");
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error creating rule:', error);
+        throw error;
       }
-      
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rules"] });

@@ -130,7 +130,16 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        console.log('Form values:', form.getValues());
+        console.log('Form state:', form.formState);
+        if (Object.keys(form.formState.errors).length > 0) {
+          console.error('Form validation errors:', form.formState.errors);
+          return;
+        }
+        form.handleSubmit(onSubmit)(e);
+      }} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
