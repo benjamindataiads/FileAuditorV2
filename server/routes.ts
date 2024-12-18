@@ -235,18 +235,45 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: "Invalid rule ID" });
       }
 
+      // First check if the rule exists
+      const existingRule = await db.query.rules.findFirst({
+        where: eq(rules.id, id)
+      });
+
+      if (!existingRule) {
+        return res.status(404).json({ message: "Rule not found" });
+      }
+
+      // Delete the rule and its associated audit results (cascade)
       const result = await db.delete(rules)
         .where(eq(rules.id, id))
         .returning();
 
+      console.log('Rule deletion result:', result);
+
       if (!result.length) {
-        return res.status(404).json({ message: "Rule not found" });
+        throw new Error("Delete operation did not return expected result");
       }
 
-      res.status(200).json({ message: "Rule deleted successfully" });
+      // Double check the deletion
+      const verifyDeletion = await db.query.rules.findFirst({
+        where: eq(rules.id, id)
+      });
+
+      if (verifyDeletion) {
+        throw new Error("Rule still exists after deletion");
+      }
+
+      res.status(200).json({ 
+        message: "Rule deleted successfully",
+        deletedRule: result[0]
+      });
     } catch (error) {
       console.error('Error deleting rule:', error);
-      res.status(500).json({ message: "Failed to delete rule" });
+      res.status(500).json({ 
+        message: "Failed to delete rule",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

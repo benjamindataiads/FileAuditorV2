@@ -40,22 +40,30 @@ export function RuleLibrary() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`/api/rules/${id}`, {
+      const response = await fetch(`/api/rules/${id}`, {
         method: "DELETE",
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete rule");
+      }
+      
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       toast({
         title: "Success",
         description: "Rule deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/rules"] });
-      queryClient.refetchQueries({ queryKey: ["/api/rules"] });
+      
+      // Force a full refetch to ensure data consistency
+      await queryClient.resetQueries({ queryKey: ["/api/rules"] });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to delete rule",
+        description: error.message || "Failed to delete rule",
         variant: "destructive",
       });
     },
