@@ -91,19 +91,17 @@ const formSchema = z.object({
         }
         break;
       case "crossField":
-        try {
-          const crossField = JSON.parse(data.value);
-          if (!crossField.field || !crossField.operator || !["==", "!=", ">", ">=", "<", "<="].includes(crossField.operator)) {
-            throw new Error();
+          const crossField = typeof data.value === 'string' ? 
+            JSON.parse(data.value) : data.value;
+          if (!crossField || !crossField.field || !crossField.operator || 
+              !["==", "!=", "contains", ">", ">=", "<", "<="].includes(crossField.operator)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Cross-field must specify a field and valid operator",
+              path: ["value"],
+            });
           }
-        } catch {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Cross-field must specify a field and valid operator",
-            path: ["value"],
-          });
-        }
-        break;
+          break;
     }
   }),
   criticality: z.enum(["warning", "critical"]),
@@ -371,16 +369,12 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                     <div className="space-y-2">
                       <Select
                         onValueChange={(operator) => {
-                          const current = field.value ? 
-                            (typeof field.value === 'string' ? JSON.parse(field.value) : field.value) 
-                            : { field: "", operator: "==" };
-                          field.onChange({ ...current, operator });
+                          const current = field.value || { field: "", operator: "==" };
+                          const newValue = { ...current, operator };
+                          field.onChange(newValue);
                         }}
                         value={
-                          field.value ? 
-                            (typeof field.value === 'string' ? 
-                              JSON.parse(field.value).operator : field.value.operator) 
-                            : "=="
+                          field.value?.operator || "=="
                         }
                       >
                         <SelectTrigger>
@@ -398,17 +392,11 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                       </Select>
                       <Select
                         onValueChange={(compareField) => {
-                          const current = field.value ? 
-                            (typeof field.value === 'string' ? JSON.parse(field.value) : field.value)
-                            : { field: "", operator: "==" };
-                          field.onChange({ ...current, field: compareField });
+                          const current = field.value || { field: "", operator: "==" };
+                          const newValue = { ...current, field: compareField };
+                          field.onChange(newValue);
                         }}
-                        value={
-                          field.value ? 
-                            (typeof field.value === 'string' ? 
-                              JSON.parse(field.value).field : field.value.field) || "" 
-                            : ""
-                        }
+                        value={field.value?.field || ""}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select field to compare" />
