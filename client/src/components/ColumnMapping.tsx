@@ -35,9 +35,33 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
   const [activeId, setActiveId] = useState<string | null>(null);
   const availableFields = getFieldNames();
   
-  const mouseSensor = useSensor(MouseSensor);
-  const touchSensor = useSensor(TouchSensor);
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 10,
+    },
+  });
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 250,
+      tolerance: 5,
+    },
+  });
   const sensors = useSensors(mouseSensor, touchSensor);
+
+  const handleMappingChange = (header: string, field: string) => {
+    const newMapping = { ...mapping };
+    
+    // Remove any existing mappings for this field (exclusive mapping)
+    Object.entries(newMapping).forEach(([key, value]) => {
+      if (value === field) {
+        delete newMapping[key];
+      }
+    });
+    
+    newMapping[header] = field;
+    setMapping(newMapping);
+    onMappingComplete(newMapping);
+  };
 
   useEffect(() => {
     const readHeaders = async () => {
@@ -141,28 +165,9 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
     }
   }, [file, availableFields, onMappingComplete]);
 
-  const handleMappingChange = (header: string, field: string) => {
-    const newMapping = { ...mapping, [header]: field };
-    setMapping(newMapping);
-    
-    // If all headers are mapped, notify parent
-    if (Object.keys(newMapping).length === headers.length) {
-      onMappingComplete(newMapping);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
-
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id);
+    const { active } = event;
+    setActiveId(active.id as string);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -171,33 +176,17 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
 
     if (!over) return;
 
-    const activeItem = active.id as string;
-    const overItem = over.id as string;
-    
-    // Only allow dragging from columns to fields or vice versa
-    const activeType = activeItem.startsWith('column-') ? 'column' : 'field';
-    const overType = overItem.startsWith('column-') ? 'column' : 'field';
-    
-    if (activeType === overType) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
 
-    const columnId = activeType === 'column' ? activeItem : overItem;
-    const fieldId = activeType === 'field' ? activeItem : overItem;
-    
-    const header = columnId.replace('column-', '');
-    const field = fieldId.replace('field-', '');
-    
-    const newMapping = { ...mapping };
-    
-    // Remove any existing mappings for this field
-    Object.entries(newMapping).forEach(([key, value]) => {
-      if (value === field) {
-        delete newMapping[key];
-      }
-    });
-    
-    newMapping[header] = field;
-    setMapping(newMapping);
-    onMappingComplete(newMapping);
+    // Only allow dragging columns to fields
+    if (!activeId.startsWith('column-') || !overId.startsWith('field-')) {
+      return;
+    }
+
+    const header = activeId.replace('column-', '');
+    const field = overId.replace('field-', '');
+    handleMappingChange(header, field);
   };
 
   if (isLoading) {
