@@ -32,18 +32,45 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
           const headers = firstLine.split('\t');
           setHeaders(headers);
           
-          // Initialize mapping with any exact matches
+          // Initialize mapping with auto-detected matches
           const initialMapping: Record<string, string> = {};
           headers.forEach(header => {
-            // Check if header exactly matches any field name (case insensitive)
-            const matchingField = availableFields.find(
+            // Try exact match first (case insensitive)
+            let matchingField = availableFields.find(
               field => field.toLowerCase() === header.toLowerCase()
             );
+
+            // If no exact match, try partial match
+            if (!matchingField) {
+              matchingField = availableFields.find(field => 
+                header.toLowerCase().includes(field.toLowerCase()) ||
+                field.toLowerCase().includes(header.toLowerCase())
+              );
+            }
+
+            // If still no match, try matching words
+            if (!matchingField) {
+              const headerWords = header.toLowerCase().split(/[_\s-]+/);
+              matchingField = availableFields.find(field => {
+                const fieldWords = field.toLowerCase().split(/[_\s-]+/);
+                return headerWords.some(word => 
+                  fieldWords.some(fieldWord => 
+                    word.includes(fieldWord) || fieldWord.includes(word)
+                  )
+                );
+              });
+            }
+
             if (matchingField) {
               initialMapping[header] = matchingField;
             }
           });
           setMapping(initialMapping);
+          
+          // If we have any mappings, notify parent
+          if (Object.keys(initialMapping).length > 0) {
+            onMappingComplete(initialMapping);
+          }
         };
         reader.readAsText(file);
       } catch (error) {
@@ -54,7 +81,7 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
     if (file) {
       readHeaders();
     }
-  }, [file]);
+  }, [file, availableFields, onMappingComplete]);
 
   const handleMappingChange = (header: string, field: string) => {
     const newMapping = { ...mapping, [header]: field };

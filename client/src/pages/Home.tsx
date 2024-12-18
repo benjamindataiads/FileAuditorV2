@@ -139,7 +139,7 @@ export function Home() {
             </Button>
             <Button
               onClick={() => setCurrentStep("rules")}
-              disabled={Object.keys(columnMapping).length === 0}
+              disabled={!uploadedFile}
             >
               Continue
               <ArrowRight className="ml-2 h-4 w-4" />
