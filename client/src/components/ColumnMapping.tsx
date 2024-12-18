@@ -24,22 +24,25 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
   const availableFields = getFieldNames();
 
   const handleMappingChange = (header: string, field: string) => {
-    const newMapping = { ...mapping };
+    let newMapping = { ...mapping };
     
-    // If field is "_unmapped", remove the mapping
     if (field === "_unmapped") {
-      delete newMapping[header];
+      // Remove this header's mapping
+      const { [header]: _, ...rest } = newMapping;
+      newMapping = rest;
     } else {
-      // Remove any existing mappings for this field (exclusive mapping)
+      // Remove any existing mappings to this field (exclusive mapping)
       Object.entries(newMapping).forEach(([key, value]) => {
         if (value === field) {
-          delete newMapping[key];
+          const { [key]: _, ...rest } = newMapping;
+          newMapping = rest;
         }
       });
-      
-      newMapping[header] = field;
+      // Add the new mapping
+      newMapping = { ...newMapping, [header]: field };
     }
     
+    console.log('New mapping:', newMapping); // Debug log
     setMapping(newMapping);
     onMappingComplete(newMapping);
   };
@@ -118,11 +121,12 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
         <div key={header} className="grid gap-2">
           <Label>{header}</Label>
           <Select
+            defaultValue="_unmapped"
             value={mapping[header] || "_unmapped"}
             onValueChange={(value) => handleMappingChange(header, value)}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a field to map" />
+            <SelectTrigger className="w-full">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_unmapped">Do not map this column</SelectItem>
