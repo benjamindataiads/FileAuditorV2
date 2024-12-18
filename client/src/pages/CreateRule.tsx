@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import {
   Card,
   CardContent,
@@ -24,6 +25,7 @@ export function CreateRule() {
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rules"] });
       setLocation("/rules");
     },
   });
