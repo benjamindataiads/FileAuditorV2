@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { FileUpload } from "@/components/FileUpload";
@@ -21,11 +21,18 @@ export function Home() {
   const [, setLocation] = useLocation();
   const [previewKey, setPreviewKey] = useState(0);
 
+  useEffect(() => {
+    if (selectedRules.length > 0 && uploadedFile) {
+      handlePreviewValidation();
+    }
+  }, [selectedRules, uploadedFile]);
+
   const previewMutation = useMutation({
     mutationFn: async ({ file, rules }: { file: File; rules: number[] }) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("rules", JSON.stringify(rules));
+      formData.append("columnMapping", JSON.stringify(columnMapping));
 
       const response = await fetch("/api/preview-validation", {
         method: "POST",
@@ -85,6 +92,11 @@ export function Home() {
   // Trigger preview validation when rules or file changes
   const handlePreviewValidation = () => {
     if (!uploadedFile || selectedRules.length === 0) return;
+    
+    const formData = new FormData();
+    formData.append("file", uploadedFile);
+    formData.append("rules", JSON.stringify(selectedRules));
+    formData.append("columnMapping", JSON.stringify(columnMapping));
     
     previewMutation.mutate({
       file: uploadedFile,
@@ -204,6 +216,11 @@ export function Home() {
                   results={previewMutation.data?.results || []}
                   isLoading={previewMutation.isPending}
                 />
+                {previewMutation.isError && (
+                  <p className="text-sm text-red-500 mt-2">
+                    Error loading preview: {previewMutation.error.message}
+                  </p>
+                )}
               </div>
             )}
           </CardContent>
