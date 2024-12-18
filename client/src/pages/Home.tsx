@@ -79,9 +79,7 @@ export function Home() {
   };
 
   const handleMappingContinue = () => {
-    if (Object.keys(columnMapping).length > 0) {
-      setCurrentStep("rules");
-    }
+    setCurrentStep("rules");
   };
 
   // Trigger preview validation when rules or file changes

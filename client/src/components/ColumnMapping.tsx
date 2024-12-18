@@ -3,19 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getFieldNames, getFrenchFieldName } from "@/lib/fieldMappings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  useDroppable,
-  useDraggable,
-} from "@dnd-kit/core";
-import { ArrowRight } from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ColumnMappingProps {
   file: File;
@@ -23,42 +18,28 @@ interface ColumnMappingProps {
   isLoading?: boolean;
 }
 
-interface DraggableItem {
-  id: string;
-  type: "column" | "field";
-  content: string;
-}
-
 export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMappingProps) {
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const [activeId, setActiveId] = useState<string | null>(null);
   const availableFields = getFieldNames();
-  
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: {
-      distance: 10,
-    },
-  });
-  const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: {
-      delay: 250,
-      tolerance: 5,
-    },
-  });
-  const sensors = useSensors(mouseSensor, touchSensor);
 
-  const handleMappingChange = (header: string, field: string) => {
+  const handleMappingChange = (header: string, field: string | undefined) => {
     const newMapping = { ...mapping };
     
-    // Remove any existing mappings for this field (exclusive mapping)
-    Object.entries(newMapping).forEach(([key, value]) => {
-      if (value === field) {
-        delete newMapping[key];
-      }
-    });
+    // If field is undefined, remove the mapping
+    if (!field) {
+      delete newMapping[header];
+    } else {
+      // Remove any existing mappings for this field (exclusive mapping)
+      Object.entries(newMapping).forEach(([key, value]) => {
+        if (value === field) {
+          delete newMapping[key];
+        }
+      });
+      
+      newMapping[header] = field;
+    }
     
-    newMapping[header] = field;
     setMapping(newMapping);
     onMappingComplete(newMapping);
   };
@@ -98,59 +79,6 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
             }
           });
           
-          // Second pass: content-based matches for unmapped headers
-          headers.forEach(header => {
-            if (initialMapping[header]) return;
-            
-            const columnValues = sampleData[header].join(' ').toLowerCase();
-            let bestMatch = '';
-            let bestScore = 0;
-            
-            availableFields.forEach(field => {
-              if (usedFields.has(field)) return;
-              
-              // Calculate match score based on field name and sample values
-              let score = 0;
-              const fieldLower = field.toLowerCase();
-              const headerLower = header.toLowerCase();
-              
-              // Check header name similarity
-              if (headerLower.includes(fieldLower) || fieldLower.includes(headerLower)) {
-                score += 2;
-              }
-              
-              // Check content patterns
-              if (field === 'price' && columnValues.match(/[\d.,]+(?:\s*(?:€|\$|EUR|USD))?/)) {
-                score += 3;
-              } else if (field === 'date' && columnValues.match(/\d{4}[-/]\d{2}[-/]\d{2}/)) {
-                score += 3;
-              } else if (field === 'url' && columnValues.match(/https?:\/\//)) {
-                score += 3;
-              }
-              
-              // Word matching
-              const fieldWords = fieldLower.split(/[_\s-]+/);
-              const headerWords = headerLower.split(/[_\s-]+/);
-              fieldWords.forEach(fieldWord => {
-                if (headerWords.some(headerWord => 
-                  headerWord.includes(fieldWord) || fieldWord.includes(headerWord)
-                )) {
-                  score += 1;
-                }
-              });
-              
-              if (score > bestScore) {
-                bestScore = score;
-                bestMatch = field;
-              }
-            });
-            
-            if (bestScore >= 2) {  // Minimum threshold for auto-mapping
-              initialMapping[header] = bestMatch;
-              usedFields.add(bestMatch);
-            }
-          });
-          
           setMapping(initialMapping);
           onMappingComplete(initialMapping);
         };
@@ -165,30 +93,6 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
     }
   }, [file, availableFields, onMappingComplete]);
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    setActiveId(active.id as string);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    // Only allow dragging columns to fields
-    if (!activeId.startsWith('column-') || !overId.startsWith('field-')) {
-      return;
-    }
-
-    const header = activeId.replace('column-', '');
-    const field = overId.replace('field-', '');
-    handleMappingChange(header, field);
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -199,119 +103,51 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
     );
   }
 
-  function DraggableColumn({ header }: { header: string }) {
-    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-      id: `column-${header}`,
-    });
-
-    return (
-      <div
-        ref={setNodeRef}
-        {...listeners}
-        {...attributes}
-        className={`p-3 rounded-md border cursor-move transition-colors ${
-          isDragging ? 'opacity-50' : ''
-        } ${mapping[header] ? 'bg-primary/10 border-primary/20' : 'bg-card hover:bg-accent/50'}`}
-      >
-        <div className="font-medium">{header}</div>
-        {mapping[header] && (
-          <Badge variant="outline" className="mt-1">
-            Mapped to: {mapping[header]}
-          </Badge>
-        )}
-      </div>
+  // Get list of available (unmapped) fields
+  const getAvailableFields = (currentHeader: string) => {
+    const currentField = mapping[currentHeader];
+    const usedFields = new Set(Object.values(mapping));
+    return availableFields.filter(field => 
+      field === currentField || !usedFields.has(field)
     );
-  }
-
-  function DroppableField({ field }: { field: string }) {
-    const { setNodeRef, isOver } = useDroppable({
-      id: `field-${field}`,
-    });
-
-    const mappedColumn = Object.entries(mapping).find(([_, f]) => f === field)?.[0];
-
-    return (
-      <div
-        ref={setNodeRef}
-        className={`p-3 rounded-md border transition-colors ${
-          isOver ? 'bg-primary/20 border-primary' : 
-          mappedColumn ? 'bg-primary/10 border-primary/20' : 
-          'bg-card hover:bg-accent/50'
-        }`}
-      >
-        <div className="font-medium">{field}</div>
-        <div className="text-sm text-muted-foreground">
-          {getFrenchFieldName(field)}
-        </div>
-        {!mappedColumn && (
-          <div className="mt-2 border-2 border-dashed border-muted-foreground/20 rounded-md p-2 text-sm text-muted-foreground text-center">
-            Drop a column here
-          </div>
-        )}
-        {mappedColumn && (
-          <Badge variant="outline" className="mt-2">
-            Mapped from: {mappedColumn}
-          </Badge>
-        )}
-      </div>
-    );
-  }
+  };
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="grid grid-cols-[1fr,auto,1fr] gap-8">
-        {/* File Columns */}
-        <Card>
-          <CardHeader>
-            <CardTitle>File Columns</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {headers.map((header) => (
-              <DraggableColumn key={header} header={header} />
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Arrow */}
-        <div className="flex items-center justify-center">
-          <ArrowRight className="h-6 w-6 text-muted-foreground" />
+    <div className="space-y-4">
+      {headers.map((header) => (
+        <div key={header} className="grid gap-2">
+          <Label>{header}</Label>
+          <Select
+            value={mapping[header] || ""}
+            onValueChange={(value) => handleMappingChange(header, value || undefined)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a field to map" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Do not map this column</SelectItem>
+              {getAvailableFields(header).map((field) => (
+                <SelectItem key={field} value={field}>
+                  {field} ({getFrenchFieldName(field)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      ))}
 
-        {/* Available Fields */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Fields</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {availableFields.map((field) => (
-              <DroppableField key={field} field={field} />
+      {Object.keys(mapping).length > 0 && (
+        <div className="mt-4">
+          <h3 className="font-medium mb-2">Current Mappings:</h3>
+          <div className="space-y-2">
+            {Object.entries(mapping).map(([header, field]) => (
+              <Badge key={header} variant="outline">
+                {header} → {field}
+              </Badge>
             ))}
-          </CardContent>
-        </Card>
-
-        <DragOverlay>
-          {activeId ? (
-            <div className="p-3 rounded-md border bg-background shadow-lg">
-              {activeId.startsWith('column-') ? (
-                activeId.replace('column-', '')
-              ) : (
-                <div>
-                  <div className="font-medium">
-                    {activeId.replace('field-', '')}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {getFrenchFieldName(activeId.replace('field-', ''))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </div>
-    </DndContext>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
