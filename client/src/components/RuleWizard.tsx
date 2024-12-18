@@ -26,7 +26,7 @@ const formSchema = z.object({
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   condition: z.object({
-    type: z.enum(["notEmpty", "minLength", "contains"], {
+    type: z.enum(["notEmpty", "minLength", "contains", "regex", "range", "crossField"], {
       required_error: "Please select a condition type",
     }),
     field: z.string().min(1, "Field name is required"),
@@ -41,22 +41,65 @@ const formSchema = z.object({
       return val;
     }),
   }).superRefine((data, ctx) => {
-    if (data.type === "minLength") {
-      const num = Number(data.value);
-      if (isNaN(num) || num <= 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Minimum length must be a positive number",
-          path: ["value"],
-        });
-      }
-    }
-    if (data.type === "contains" && (!data.value || typeof data.value !== "string")) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Contains value must be a non-empty string",
-        path: ["value"],
-      });
+    switch (data.type) {
+      case "minLength":
+        const num = Number(data.value);
+        if (isNaN(num) || num <= 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Minimum length must be a positive number",
+            path: ["value"],
+          });
+        }
+        break;
+      case "contains":
+        if (!data.value || typeof data.value !== "string") {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Contains value must be a non-empty string",
+            path: ["value"],
+          });
+        }
+        break;
+      case "regex":
+        try {
+          new RegExp(data.value);
+        } catch (e) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Invalid regular expression pattern",
+            path: ["value"],
+          });
+        }
+        break;
+      case "range":
+        try {
+          const range = JSON.parse(data.value);
+          if (!range.min || !range.max || isNaN(range.min) || isNaN(range.max) || range.min >= range.max) {
+            throw new Error();
+          }
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Range must be a valid JSON object with min and max numbers",
+            path: ["value"],
+          });
+        }
+        break;
+      case "crossField":
+        try {
+          const crossField = JSON.parse(data.value);
+          if (!crossField.field || !crossField.operator || !["==", "!=", ">", ">=", "<", "<="].includes(crossField.operator)) {
+            throw new Error();
+          }
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Cross-field must specify a field and valid operator",
+            path: ["value"],
+          });
+        }
+        break;
     }
   }),
   criticality: z.enum(["warning", "critical"]),
@@ -150,6 +193,9 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                   <SelectItem value="notEmpty">Must not be empty</SelectItem>
                   <SelectItem value="minLength">Minimum length</SelectItem>
                   <SelectItem value="contains">Contains value</SelectItem>
+                  <SelectItem value="regex">Matches pattern</SelectItem>
+                  <SelectItem value="range">Numerical range</SelectItem>
+                  <SelectItem value="crossField">Cross-field validation</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -178,28 +224,128 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
           <FormField
             control={form.control}
             name="condition.value"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Condition Value</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type={form.watch("condition.type") === "minLength" ? "number" : "text"}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (form.watch("condition.type") === "minLength") {
-                        const numValue = parseInt(value);
+            render={({ field }) => {
+              const conditionType = form.watch("condition.type");
+              let inputElement;
+              let description = "";
+
+              switch (conditionType) {
+                case "minLength":
+                  inputElement = (
+                    <Input
+                      {...field}
+                      type="number"
+                      onChange={(e) => {
+                        const numValue = parseInt(e.target.value);
                         field.onChange(isNaN(numValue) ? undefined : numValue);
-                      } else {
-                        field.onChange(value);
-                      }
-                    }}
-                    value={field.value?.toString() ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+                      }}
+                      value={field.value?.toString() ?? ""}
+                    />
+                  );
+                  description = "Enter the minimum number of characters required";
+                  break;
+                case "contains":
+                  inputElement = (
+                    <Input
+                      {...field}
+                      type="text"
+                      value={field.value?.toString() ?? ""}
+                    />
+                  );
+                  description = "Enter the text that must be contained in the field";
+                  break;
+                case "regex":
+                  inputElement = (
+                    <Input
+                      {...field}
+                      type="text"
+                      placeholder="^[A-Za-z0-9]+$"
+                      value={field.value?.toString() ?? ""}
+                    />
+                  );
+                  description = "Enter a valid regular expression pattern";
+                  break;
+                case "range":
+                  inputElement = (
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        onChange={(e) => {
+                          const min = parseFloat(e.target.value);
+                          const current = field.value ? JSON.parse(field.value) : { min: 0, max: 0 };
+                          field.onChange(JSON.stringify({ ...current, min }));
+                        }}
+                        value={field.value ? JSON.parse(field.value).min : ""}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        onChange={(e) => {
+                          const max = parseFloat(e.target.value);
+                          const current = field.value ? JSON.parse(field.value) : { min: 0, max: 0 };
+                          field.onChange(JSON.stringify({ ...current, max }));
+                        }}
+                        value={field.value ? JSON.parse(field.value).max : ""}
+                      />
+                    </div>
+                  );
+                  description = "Enter the minimum and maximum values for the range";
+                  break;
+                case "crossField":
+                  inputElement = (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Field name to compare"
+                        onChange={(e) => {
+                          const compareField = e.target.value;
+                          const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
+                          field.onChange(JSON.stringify({ ...current, field: compareField }));
+                        }}
+                        value={field.value ? JSON.parse(field.value).field || "" : ""}
+                      />
+                      <Select
+                        onValueChange={(operator) => {
+                          const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
+                          field.onChange(JSON.stringify({ ...current, operator }));
+                        }}
+                        value={field.value ? JSON.parse(field.value).operator : "=="}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select operator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="==">Equal to</SelectItem>
+                          <SelectItem value="!=">Not equal to</SelectItem>
+                          <SelectItem value=">">Greater than</SelectItem>
+                          <SelectItem value=">=">Greater than or equal</SelectItem>
+                          <SelectItem value="<">Less than</SelectItem>
+                          <SelectItem value="<=">Less than or equal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                  description = "Select a field to compare and the comparison operator";
+                  break;
+                default:
+                  inputElement = (
+                    <Input
+                      {...field}
+                      type="text"
+                      value={field.value?.toString() ?? ""}
+                    />
+                  );
+              }
+
+              return (
+                <FormItem>
+                  <FormLabel>Condition Value</FormLabel>
+                  <FormControl>{inputElement}</FormControl>
+                  <FormDescription>{description}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         )}
 

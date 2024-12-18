@@ -9,7 +9,7 @@ export interface Rule {
 }
 
 export interface RuleCondition {
-  type: "notEmpty" | "minLength" | "contains";
+  type: "notEmpty" | "minLength" | "contains" | "regex" | "range" | "crossField";
   field: string;
   value?: any;
 }

@@ -43,10 +43,10 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Validate condition type
-      if (!["notEmpty", "minLength", "contains"].includes(condition.type)) {
+      if (!["notEmpty", "minLength", "contains", "regex", "range", "crossField"].includes(condition.type)) {
         return res.status(400).json({ 
           message: "Invalid condition type",
-          details: "Condition type must be one of: notEmpty, minLength, contains"
+          details: "Condition type must be one of: notEmpty, minLength, contains, regex, range, crossField"
         });
       }
 
@@ -61,22 +61,67 @@ export function registerRoutes(app: Express): Server {
       let processedCondition = { ...condition };
 
       // Type-specific validation
-      if (condition.type === "minLength") {
-        const minLength = parseInt(condition.value);
-        if (isNaN(minLength) || minLength <= 0) {
-          return res.status(400).json({ 
-            message: "Invalid minimum length",
-            details: "Minimum length must be a positive number"
-          });
-        }
-        processedCondition.value = minLength;
-      } else if (condition.type === "contains") {
-        if (!condition.value || typeof condition.value !== "string") {
-          return res.status(400).json({ 
-            message: "Invalid contains value",
-            details: "Contains condition requires a non-empty string value"
-          });
-        }
+      switch (condition.type) {
+        case "minLength":
+          const minLength = parseInt(condition.value);
+          if (isNaN(minLength) || minLength <= 0) {
+            return res.status(400).json({ 
+              message: "Invalid minimum length",
+              details: "Minimum length must be a positive number"
+            });
+          }
+          processedCondition.value = minLength;
+          break;
+          
+        case "contains":
+          if (!condition.value || typeof condition.value !== "string") {
+            return res.status(400).json({ 
+              message: "Invalid contains value",
+              details: "Contains condition requires a non-empty string value"
+            });
+          }
+          break;
+          
+        case "regex":
+          try {
+            new RegExp(condition.value);
+          } catch (e) {
+            return res.status(400).json({
+              message: "Invalid regex pattern",
+              details: "The provided pattern is not a valid regular expression"
+            });
+          }
+          break;
+          
+        case "range":
+          try {
+            const range = JSON.parse(condition.value);
+            if (!range.min || !range.max || isNaN(range.min) || isNaN(range.max) || range.min >= range.max) {
+              throw new Error();
+            }
+            processedCondition.value = range;
+          } catch {
+            return res.status(400).json({
+              message: "Invalid range",
+              details: "Range must be a valid JSON object with min and max numbers, where min < max"
+            });
+          }
+          break;
+          
+        case "crossField":
+          try {
+            const crossField = JSON.parse(condition.value);
+            if (!crossField.field || !crossField.operator || !["==", "!=", ">", ">=", "<", "<="].includes(crossField.operator)) {
+              throw new Error();
+            }
+            processedCondition.value = crossField;
+          } catch {
+            return res.status(400).json({
+              message: "Invalid cross-field condition",
+              details: "Cross-field must specify a field and valid operator (==, !=, >, >=, <, <=)"
+            });
+          }
+          break;
       }
 
       const rule = await db.insert(rules).values({
@@ -226,6 +271,33 @@ function evaluateRule(product: any, rule: any) {
       if (!product[condition.field]?.toLowerCase().includes(product[condition.value]?.toLowerCase())) {
         status = rule.criticality;
         details = `Field ${condition.field} does not contain ${condition.value}`;
+      }
+      break;
+    case "regex":
+      try {
+        const regex = new RegExp(condition.value);
+        if (!product[condition.field] || !regex.test(product[condition.field])) {
+          status = rule.criticality;
+          details = `Field ${condition.field} does not match pattern ${condition.value}`;
+        }
+      } catch (e) {
+        status = "warning";
+        details = `Invalid regex pattern: ${condition.value}`;
+      }
+      break;
+    case "range":
+      const num = parseFloat(product[condition.field]);
+      if (isNaN(num) || num < condition.value.min || num > condition.value.max) {
+        status = rule.criticality;
+        details = `Field ${condition.field} is not within range ${condition.value.min}-${condition.value.max}`;
+      }
+      break;
+    case "crossField":
+      const compareField = product[condition.value.field];
+      const mainField = product[condition.field];
+      if (!compareField || !mainField || !eval(`"${mainField}" ${condition.value.operator} "${compareField}"`)) {
+        status = rule.criticality;
+        details = `Field ${condition.field} ${condition.value.operator} ${condition.value.field} condition not met`;
       }
       break;
   }
