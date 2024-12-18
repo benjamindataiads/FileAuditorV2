@@ -52,28 +52,33 @@ export function AuditReport({ audit }: AuditReportProps) {
     return Math.round(score);
   };
 
+  const getGroupedResults = () => {
+    const results = audit.results || [];
+    return results.reduce((acc, result) => {
+      const key = result.productId;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(result);
+      return acc;
+    }, {} as Record<string, typeof audit.results>);
+  };
+
   const handleExport = () => {
     const rules = [...new Set(audit.results?.map(r => r.rule?.name) || [])];
-    const groupedResults = audit.results?.reduce((acc, result) => {
-      if (!acc[result.productId]) {
-        acc[result.productId] = {};
-      }
-      if (result.rule?.name) {
-        acc[result.productId][result.rule.name] = result;
-      }
-      return acc;
-    }, {} as Record<string, Record<string, typeof audit.results[0]>>);
+    const groupedResults = getGroupedResults();
 
     const csvContent = [
       ["ID", ...rules].join(","),
-      ...Object.entries(groupedResults || {}).map(([productId, ruleResults]) =>
+      ...Object.entries(groupedResults).map(([productId, results]) =>
         [
           productId,
-          ...rules.map(ruleName => 
-            ruleResults[ruleName] 
-              ? `${ruleResults[ruleName].status}${ruleResults[ruleName].details ? ` (${ruleResults[ruleName].details})` : ''}`
-              : "-"
-          ),
+          ...rules.map(ruleName => {
+            const result = results.find(r => r.rule?.name === ruleName);
+            return result 
+              ? `${result.status}${result.details ? ` (${result.details})` : ''}`
+              : "-";
+          }),
         ].join(",")
       ),
     ].join("\n");
@@ -93,103 +98,102 @@ export function AuditReport({ audit }: AuditReportProps) {
     <TooltipProvider>
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Products</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{audit.totalProducts}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Compliance Score</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{calculateComplianceScore()}%</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Critical Issues</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">
+                {audit.criticalProducts}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>Total Products</CardTitle>
+            <CardTitle>Results Distribution</CardTitle>
+            <CardDescription>
+              Overview of product compliance status
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{audit.totalProducts}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Compliance Score</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{calculateComplianceScore()}%</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Critical Issues</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {audit.criticalProducts}
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    labelLine={false}
+                    label={({
+                      cx,
+                      cy,
+                      midAngle,
+                      innerRadius,
+                      outerRadius,
+                      percent,
+                    }) => {
+                      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                      const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
+                      const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          fill="white"
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                        >
+                          {`${(percent * 100).toFixed(0)}%`}
+                        </text>
+                      );
+                    }}
+                  >
+                    {pieChartData.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Results Distribution</CardTitle>
-          <CardDescription>
-            Overview of product compliance status
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieChartData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  labelLine={false}
-                  label={({
-                    cx,
-                    cy,
-                    midAngle,
-                    innerRadius,
-                    outerRadius,
-                    percent,
-                  }) => {
-                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                    const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-                    const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-                    return (
-                      <text
-                        x={x}
-                        y={y}
-                        fill="white"
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                      >
-                        {`${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}
-                >
-                  {pieChartData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Detailed Results</CardTitle>
-          <Button onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-        </CardHeader>
-        <CardContent>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Detailed Results</CardTitle>
+            <Button onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </CardHeader>
+          <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  {/* Create columns for each unique rule */}
                   {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => (
                     <TableHead key={ruleName} className="text-center">
                       {ruleName}
@@ -198,58 +202,50 @@ export function AuditReport({ audit }: AuditReportProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {/* Group results by product ID */}
-                {Object.entries(
-                  audit.results?.reduce((acc, result) => {
-                    if (!acc[result.productId]) {
-                      acc[result.productId] = {};
-                    }
-                    if (result.rule?.name) {
-                      acc[result.productId][result.rule.name] = result;
-                    }
-                    return acc;
-                  }, {} as Record<string, Record<string, typeof audit.results[0]>>) || {}
-                ).map(([productId, ruleResults]) => (
+                {Object.entries(getGroupedResults()).map(([productId, results]) => (
                   <TableRow key={productId}>
                     <TableCell>{productId}</TableCell>
-                    {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => (
-                      <TableCell key={ruleName} className="text-center">
-                        {ruleResults[ruleName] ? (
-                          <div className="inline-flex items-center">
-                            <Badge
-                              variant={
-                                ruleResults[ruleName].status === "ok"
-                                  ? "default"
-                                  : ruleResults[ruleName].status === "warning"
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                            >
-                              {ruleResults[ruleName].status}
-                            </Badge>
-                            {ruleResults[ruleName].details && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Info className="h-4 w-4 ml-1 text-muted-foreground cursor-pointer" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{ruleResults[ruleName].details}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                    ))}
+                    {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => {
+                      const result = results.find(r => r.rule?.name === ruleName);
+                      return (
+                        <TableCell key={ruleName} className="text-center">
+                          {result ? (
+                            <div className="inline-flex items-center">
+                              <Badge
+                                variant={
+                                  result.status === "ok"
+                                    ? "default"
+                                    : result.status === "warning"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
+                              >
+                                {result.status}
+                              </Badge>
+                              {result.details && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-4 w-4 ml-1 text-muted-foreground cursor-pointer" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{result.details}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
     </TooltipProvider>
   );
 }
