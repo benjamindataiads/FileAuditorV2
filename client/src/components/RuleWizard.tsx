@@ -34,15 +34,23 @@ const formSchema = z.object({
     caseSensitive: z.boolean().optional(),
     dateFormat: z.string().optional(),
     field: z.string().min(1, "Field name is required"),
-    value: z.any().superRefine((val, ctx) => {
-      if (val === undefined || val === "") {
+    value: z.any().optional().superRefine((val, ctx) => {
+      const parent = ctx.path[0] as { parent?: { type?: string } };
+      const conditionType = parent?.parent?.type;
+      
+      // Skip validation for notEmpty condition type
+      if (conditionType === "notEmpty") {
+        return z.NEVER;
+      }
+      
+      // All other condition types require a value
+      if (conditionType && (val === undefined || val === "")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Value is required",
+          message: "Value is required for this condition type",
         });
-        return;
       }
-      return val;
+      return z.NEVER;
     }),
   }).superRefine((data, ctx) => {
     switch (data.type) {
@@ -123,6 +131,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
         type: "notEmpty",
         field: "",
         value: undefined,
+        caseSensitive: false,
       },
       criticality: "warning",
     },
@@ -132,13 +141,22 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
     <Form {...form}>
       <form onSubmit={(e) => {
         e.preventDefault();
-        console.log('Form values:', form.getValues());
+        const values = form.getValues();
+        
+        // For notEmpty condition type, ensure value is undefined
+        if (values.condition.type === "notEmpty") {
+          values.condition.value = undefined;
+        }
+        
+        console.log('Form values:', values);
         console.log('Form state:', form.formState);
+        
         if (Object.keys(form.formState.errors).length > 0) {
           console.error('Form validation errors:', form.formState.errors);
           return;
         }
-        form.handleSubmit(onSubmit)(e);
+        
+        onSubmit(values);
       }} className="space-y-6">
         <FormField
           control={form.control}
