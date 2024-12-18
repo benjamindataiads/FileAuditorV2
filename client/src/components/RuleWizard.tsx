@@ -172,6 +172,12 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                   <Input
                     {...field}
                     type={form.watch("condition.type") === "minLength" ? "number" : "text"}
+                    onChange={(e) => {
+                      const value = form.watch("condition.type") === "minLength"
+                        ? parseInt(e.target.value)
+                        : e.target.value;
+                      field.onChange(value);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
