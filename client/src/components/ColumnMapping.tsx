@@ -24,26 +24,26 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
   const availableFields = getFieldNames();
 
   const handleMappingChange = (header: string, field: string) => {
-    let newMapping = { ...mapping };
-    
-    if (field === "_unmapped") {
-      // Remove this header's mapping
-      const { [header]: _, ...rest } = newMapping;
-      newMapping = rest;
-    } else {
-      // Remove any existing mappings to this field (exclusive mapping)
-      Object.entries(newMapping).forEach(([key, value]) => {
-        if (value === field) {
-          const { [key]: _, ...rest } = newMapping;
-          newMapping = rest;
-        }
-      });
-      // Add the new mapping
-      newMapping[header] = field;
-    }
-    
-    setMapping(newMapping);
-    onMappingComplete(newMapping);
+    setMapping(prevMapping => {
+      const newMapping = { ...prevMapping };
+      
+      // If unmapping, remove the field
+      if (field === "_unmapped") {
+        delete newMapping[header];
+      } else {
+        // Remove any existing mappings to this field
+        Object.entries(newMapping).forEach(([key, value]) => {
+          if (value === field) {
+            delete newMapping[key];
+          }
+        });
+        // Add new mapping
+        newMapping[header] = field;
+      }
+      
+      onMappingComplete(newMapping);
+      return newMapping;
+    });
   };
 
   useEffect(() => {
@@ -120,12 +120,14 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
         <div key={header} className="grid gap-2">
           <Label>{header}</Label>
           <Select
-            defaultValue="_unmapped"
+            key={`${header}-${mapping[header] || "_unmapped"}`}
             value={mapping[header] || "_unmapped"}
             onValueChange={(value) => handleMappingChange(header, value)}
           >
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue>
+                {mapping[header] ? `${mapping[header]} (${getFrenchFieldName(mapping[header])})` : "Do not map this column"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_unmapped">Do not map this column</SelectItem>
