@@ -300,6 +300,7 @@ function evaluateRule(product: any, rule: any) {
     switch (operator) {
       case "==": return v1 === v2;
       case "!=": return v1 !== v2;
+      case "contains": return v1.includes(v2);
       case ">": return parseFloat(v1) > parseFloat(v2);
       case ">=": return parseFloat(v1) >= parseFloat(v2);
       case "<": return parseFloat(v1) < parseFloat(v2);

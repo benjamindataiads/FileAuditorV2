@@ -370,6 +370,26 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                   inputElement = (
                     <div className="space-y-2">
                       <Select
+                        onValueChange={(operator) => {
+                          const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
+                          field.onChange(JSON.stringify({ ...current, operator }));
+                        }}
+                        value={field.value ? JSON.parse(field.value).operator : "=="}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select operator" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="==">Equal to</SelectItem>
+                          <SelectItem value="!=">Not equal to</SelectItem>
+                          <SelectItem value="contains">Contains (case insensitive)</SelectItem>
+                          <SelectItem value=">">Greater than</SelectItem>
+                          <SelectItem value=">=">Greater than or equal</SelectItem>
+                          <SelectItem value="<">Less than</SelectItem>
+                          <SelectItem value="<=">Less than or equal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select
                         onValueChange={(compareField) => {
                           const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
                           field.onChange(JSON.stringify({ ...current, field: compareField }));
@@ -387,28 +407,9 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Select
-                        onValueChange={(operator) => {
-                          const current = field.value ? JSON.parse(field.value) : { field: "", operator: "==" };
-                          field.onChange(JSON.stringify({ ...current, operator }));
-                        }}
-                        value={field.value ? JSON.parse(field.value).operator : "=="}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select operator" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="==">Equal to</SelectItem>
-                          <SelectItem value="!=">Not equal to</SelectItem>
-                          <SelectItem value=">">Greater than</SelectItem>
-                          <SelectItem value=">=">Greater than or equal</SelectItem>
-                          <SelectItem value="<">Less than</SelectItem>
-                          <SelectItem value="<=">Less than or equal</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   );
-                  description = "Select a field to compare and the comparison operator";
+                  description = "Select an operator and field to compare";
                   break;
                 default:
                   inputElement = (
