@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Card,
   CardContent,
@@ -11,6 +12,7 @@ import { RuleWizard } from "@/components/RuleWizard";
 import type { Rule } from "@/lib/types";
 
 export function CreateRule() {
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const createMutation = useMutation({

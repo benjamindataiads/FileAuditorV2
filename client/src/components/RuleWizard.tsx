@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Rule } from "@/lib/types";
+import { getFieldNames, getFrenchFieldName, type FieldMapping } from "@/lib/fieldMappings";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -112,6 +113,9 @@ interface RuleWizardProps {
   onSubmit: (values: Omit<Rule, "id" | "createdAt">) => void;
   isSubmitting?: boolean;
 }
+
+
+
 
 export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
   const form = useForm<z.infer<typeof formSchema>>({
@@ -213,11 +217,25 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Field Name</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a field to validate" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {getFieldNames().map((fieldName) => (
+                    <SelectItem key={fieldName} value={fieldName}>
+                      {fieldName} ({getFrenchFieldName(fieldName)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormDescription>
-                The field in the product feed to check
+                Select the field to validate from the product feed
               </FormDescription>
               <FormMessage />
             </FormItem>
