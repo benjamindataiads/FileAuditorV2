@@ -76,7 +76,12 @@ export function Home() {
 
   const handleMappingComplete = (mapping: Record<string, string>) => {
     setColumnMapping(mapping);
-    setCurrentStep("rules");
+  };
+
+  const handleMappingContinue = () => {
+    if (Object.keys(columnMapping).length > 0) {
+      setCurrentStep("rules");
+    }
   };
 
   // Trigger preview validation when rules or file changes
@@ -138,8 +143,8 @@ export function Home() {
               Back
             </Button>
             <Button
-              onClick={() => setCurrentStep("rules")}
-              disabled={!uploadedFile}
+              onClick={handleMappingContinue}
+              disabled={Object.keys(columnMapping).length === 0}
             >
               Continue
               <ArrowRight className="ml-2 h-4 w-4" />

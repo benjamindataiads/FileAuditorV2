@@ -67,10 +67,8 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
           });
           setMapping(initialMapping);
           
-          // If we have any mappings, notify parent
-          if (Object.keys(initialMapping).length > 0) {
-            onMappingComplete(initialMapping);
-          }
+          // Notify parent of initial mappings
+          onMappingComplete(initialMapping);
         };
         reader.readAsText(file);
       } catch (error) {
