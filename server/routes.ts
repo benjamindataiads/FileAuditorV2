@@ -351,100 +351,106 @@ function evaluateRule(product: any, rule: any) {
   };
 
   try {
-    const fieldValue = getFieldValue(condition.field);
+      const fieldValue = getFieldValue(condition.field);
+      console.log(`Evaluating rule for field '${condition.field}':`, {
+        rawValue: fieldValue,
+        trimmedValue: fieldValue.trim(),
+        condition: condition,
+      });
 
-    switch (condition.type) {
-      case "notEmpty":
-        if (!fieldValue.trim()) {
-          status = rule.criticality;
-          details = `Field '${condition.field}' is empty or contains only whitespace`;
-        }
-        break;
-
-      case "minLength":
-        if (fieldValue.length < condition.value) {
-          status = rule.criticality;
-          details = `Field '${condition.field}' has ${fieldValue.length} characters (minimum required: ${condition.value})`;
-        }
-        break;
-
-      case "contains":
-        const searchValue = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
-        const testValue = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
-        if (!testValue.includes(searchValue)) {
-          status = rule.criticality;
-          details = `Field '${condition.field}' does not contain '${condition.value}'`;
-        }
-        break;
-
-      case "date":
-        try {
-          let parsedDate: Date;
-          if (condition.dateFormat === "ISO") {
-            parsedDate = new Date(fieldValue);
-          } else {
-            parsedDate = dateParse(fieldValue, condition.dateFormat || "yyyy-MM-dd", new Date());
+      switch (condition.type) {
+        case "notEmpty":
+          const trimmedValue = String(fieldValue).trim();
+          if (!trimmedValue || trimmedValue.length === 0) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' is empty or contains only whitespace`;
           }
+          break;
+
+        case "minLength":
+          if (fieldValue.length < condition.value) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' has ${fieldValue.length} characters (minimum required: ${condition.value})`;
+          }
+          break;
+
+        case "contains":
+          const searchValue = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
+          const testValue = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
+          if (!testValue.includes(searchValue)) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' does not contain '${condition.value}'`;
+          }
+          break;
+
+        case "date":
+          try {
+            let parsedDate: Date;
+            if (condition.dateFormat === "ISO") {
+              parsedDate = new Date(fieldValue);
+            } else {
+              parsedDate = dateParse(fieldValue, condition.dateFormat || "yyyy-MM-dd", new Date());
+            }
+            
+            if (isNaN(parsedDate.getTime())) {
+              status = rule.criticality;
+              details = `Field '${condition.field}' is not a valid date in format ${condition.dateFormat || "yyyy-MM-dd"}`;
+            }
+          } catch (e) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' has invalid date format`;
+          }
+          break;
+
+        case "regex":
+          try {
+            const regex = new RegExp(condition.value, 'i'); // Case insensitive by default
+            if (!regex.test(fieldValue)) {
+              status = rule.criticality;
+              details = `Field '${condition.field}' does not match pattern '${condition.value}'`;
+            }
+          } catch (e) {
+            status = "warning";
+            details = `Invalid regex pattern: ${condition.value}`;
+          }
+          break;
+
+        case "range":
+          const num = parseFloat(fieldValue);
+          const { min, max } = condition.value;
+          if (isNaN(num)) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' value '${fieldValue}' is not a valid number`;
+          } else if (num < min || num > max) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' value ${num} is not within range ${min}-${max}`;
+          }
+          break;
+
+        case "crossField":
+          const { field: compareFieldName, operator } = condition.value;
+          const compareFieldValue = getFieldValue(compareFieldName);
           
-          if (isNaN(parsedDate.getTime())) {
+          if (!compareValues(fieldValue, compareFieldValue, operator)) {
+            const operatorMap = {
+              "==": "equal to",
+              "!=": "not equal to",
+              ">": "greater than",
+              ">=": "greater than or equal to",
+              "<": "less than",
+              "<=": "less than or equal to"
+            } as const;
+
+            const operatorText = operatorMap[operator as keyof typeof operatorMap];
             status = rule.criticality;
-            details = `Field '${condition.field}' is not a valid date in format ${condition.dateFormat || "yyyy-MM-dd"}`;
+            details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
           }
-        } catch (e) {
-          status = rule.criticality;
-          details = `Field '${condition.field}' has invalid date format`;
-        }
-        break;
-
-      case "regex":
-        try {
-          const regex = new RegExp(condition.value, 'i'); // Case insensitive by default
-          if (!regex.test(fieldValue)) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' does not match pattern '${condition.value}'`;
-          }
-        } catch (e) {
-          status = "warning";
-          details = `Invalid regex pattern: ${condition.value}`;
-        }
-        break;
-
-      case "range":
-        const num = parseFloat(fieldValue);
-        const { min, max } = condition.value;
-        if (isNaN(num)) {
-          status = rule.criticality;
-          details = `Field '${condition.field}' value '${fieldValue}' is not a valid number`;
-        } else if (num < min || num > max) {
-          status = rule.criticality;
-          details = `Field '${condition.field}' value ${num} is not within range ${min}-${max}`;
-        }
-        break;
-
-      case "crossField":
-        const { field: compareFieldName, operator } = condition.value;
-        const compareFieldValue = getFieldValue(compareFieldName);
-        
-        if (!compareValues(fieldValue, compareFieldValue, operator)) {
-          const operatorMap = {
-            "==": "equal to",
-            "!=": "not equal to",
-            ">": "greater than",
-            ">=": "greater than or equal to",
-            "<": "less than",
-            "<=": "less than or equal to"
-          } as const;
-
-          const operatorText = operatorMap[operator as keyof typeof operatorMap];
-          status = rule.criticality;
-          details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
-        }
-        break;
+          break;
+      }
+    } catch (error: unknown) {
+      status = "warning";
+      details = `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
-  } catch (error: unknown) {
-    status = "warning";
-    details = `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`;
-  }
 
   return { status, details };
 }
