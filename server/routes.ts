@@ -1,4 +1,7 @@
 import type { Express } from "express";
+import { eq } from "drizzle-orm";
+import { db } from "@db";
+import { rules, audits, auditResults } from "@db/schema";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { rules, audits, auditResults } from "@db/schema";
@@ -10,12 +13,17 @@ import crypto from "crypto";
 const upload = multer({ storage: multer.memoryStorage() });
 
 export function registerRoutes(app: Express): Server {
-  // Rules endpoints
-  app.get("/api/rules", async (req, res) => {
-    const allRules = await db.query.rules.findMany();
-    res.json(allRules);
+  // Get all rules
+  app.get("/api/rules", async (_req, res) => {
+    try {
+      const allRules = await db.query.rules.findMany();
+      res.json(allRules);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch rules" });
+    }
   });
 
+  // Rules endpoints
   app.post("/api/rules", async (req, res) => {
     const rule = await db.insert(rules).values(req.body).returning();
     res.json(rule[0]);
