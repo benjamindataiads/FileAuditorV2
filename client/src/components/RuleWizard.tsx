@@ -229,7 +229,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 <SelectContent>
                   {getFieldNames().map((fieldName) => (
                     <SelectItem key={fieldName} value={fieldName}>
-                      {fieldName} ({getFrenchFieldName(fieldName)})
+                      {fieldName}
                     </SelectItem>
                   ))}
                 </SelectContent>

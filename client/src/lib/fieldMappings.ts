@@ -52,7 +52,7 @@ export const fieldMappings: Record<string, FieldMapping> = {
   product_highlight: { en: "product_highlight", fr: "Point fort du produit" }
 };
 
-// Get all available English field names
+// Get all available field names (English only for UI)
 export const getFieldNames = (): string[] => {
   return Object.keys(fieldMappings);
 };
@@ -67,4 +67,15 @@ export const getFrenchFieldName = (englishName: string): string => {
 export const getEnglishFieldName = (frenchName: string): string | undefined => {
   const entry = Object.entries(fieldMappings).find(([_, mapping]) => mapping.fr === frenchName);
   return entry ? entry[0] : undefined;
+};
+
+// Validate field name in either language and return English version
+export const validateAndNormalizeFieldName = (fieldName: string): string | undefined => {
+  // If it's already an English field name
+  if (fieldMappings[fieldName as keyof typeof fieldMappings]) {
+    return fieldName;
+  }
+  
+  // If it's a French field name, get its English equivalent
+  return getEnglishFieldName(fieldName);
 };
