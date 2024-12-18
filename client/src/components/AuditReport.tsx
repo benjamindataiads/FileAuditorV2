@@ -15,15 +15,21 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Info } from "lucide-react";
 import {
   PieChart,
   Pie,
   Cell,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
 } from "recharts";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Audit } from "@/lib/types";
 
 interface AuditReportProps {
@@ -47,16 +53,29 @@ export function AuditReport({ audit }: AuditReportProps) {
   };
 
   const handleExport = () => {
+    const rules = [...new Set(audit.results?.map(r => r.rule?.name) || [])];
+    const groupedResults = audit.results?.reduce((acc, result) => {
+      if (!acc[result.productId]) {
+        acc[result.productId] = {};
+      }
+      if (result.rule?.name) {
+        acc[result.productId][result.rule.name] = result;
+      }
+      return acc;
+    }, {} as Record<string, Record<string, typeof audit.results[0]>>);
+
     const csvContent = [
-      ["Product ID", "Rule", "Status", "Details"].join(","),
-      ...(audit.results?.map((result) =>
+      ["ID", ...rules].join(","),
+      ...Object.entries(groupedResults || {}).map(([productId, ruleResults]) =>
         [
-          result.productId,
-          result.rule?.name,
-          result.status,
-          result.details,
+          productId,
+          ...rules.map(ruleName => 
+            ruleResults[ruleName] 
+              ? `${ruleResults[ruleName].status}${ruleResults[ruleName].details ? ` (${ruleResults[ruleName].details})` : ''}`
+              : "-"
+          ),
         ].join(",")
-      ) || []),
+      ),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -165,38 +184,70 @@ export function AuditReport({ audit }: AuditReportProps) {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product ID</TableHead>
-                <TableHead>Rule</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {audit.results?.map((result) => (
-                <TableRow key={result.id}>
-                  <TableCell>{result.productId}</TableCell>
-                  <TableCell>{result.rule?.name}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        result.status === "ok"
-                          ? "default"
-                          : result.status === "warning"
-                          ? "secondary"
-                          : "destructive"
-                      }
-                    >
-                      {result.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{result.details}</TableCell>
+          <TooltipProvider>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  {/* Create columns for each unique rule */}
+                  {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => (
+                    <TableHead key={ruleName} className="text-center">
+                      {ruleName}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {/* Group results by product ID */}
+                {Object.entries(
+                  audit.results?.reduce((acc, result) => {
+                    if (!acc[result.productId]) {
+                      acc[result.productId] = {};
+                    }
+                    if (result.rule?.name) {
+                      acc[result.productId][result.rule.name] = result;
+                    }
+                    return acc;
+                  }, {} as Record<string, Record<string, typeof audit.results[0]>>) || {}
+                ).map(([productId, ruleResults]) => (
+                  <TableRow key={productId}>
+                    <TableCell>{productId}</TableCell>
+                    {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => (
+                      <TableCell key={ruleName} className="text-center">
+                        {ruleResults[ruleName] ? (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <div className="inline-flex items-center">
+                                <Badge
+                                  variant={
+                                    ruleResults[ruleName].status === "ok"
+                                      ? "default"
+                                      : ruleResults[ruleName].status === "warning"
+                                      ? "secondary"
+                                      : "destructive"
+                                  }
+                                >
+                                  {ruleResults[ruleName].status}
+                                </Badge>
+                                {ruleResults[ruleName].details && (
+                                  <Info className="h-4 w-4 ml-1 text-muted-foreground" />
+                                )}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{ruleResults[ruleName].details}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </CardContent>
       </Card>
     </div>
