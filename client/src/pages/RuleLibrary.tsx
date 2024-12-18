@@ -1,8 +1,9 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -21,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Rule } from "@/lib/types";
 
 export function RuleLibrary() {
+  const { toast } = useToast();
   const { data: rules, isLoading } = useQuery<Rule[]>({
     queryKey: ["/api/rules"],
   });
@@ -32,8 +34,18 @@ export function RuleLibrary() {
       });
     },
     onSuccess: () => {
-      // Invalidate and refetch rules
+      toast({
+        title: "Success",
+        description: "Rule deleted successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/rules"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete rule",
+        variant: "destructive",
+      });
     },
   });
 

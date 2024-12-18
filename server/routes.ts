@@ -96,6 +96,16 @@ export function registerRoutes(app: Express): Server {
 
     res.json({ auditId });
   });
+  app.delete("/api/rules/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.delete(rules).where(eq(rules.id, id));
+      res.status(200).json({ message: "Rule deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete rule" });
+    }
+  });
+
 
   // Get audit results
   app.get("/api/audits/:id", async (req, res) => {
