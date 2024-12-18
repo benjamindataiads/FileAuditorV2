@@ -231,9 +231,21 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/rules/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await db.delete(rules).where(eq(rules.id, id));
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid rule ID" });
+      }
+
+      const result = await db.delete(rules)
+        .where(eq(rules.id, id))
+        .returning();
+
+      if (!result.length) {
+        return res.status(404).json({ message: "Rule not found" });
+      }
+
       res.status(200).json({ message: "Rule deleted successfully" });
     } catch (error) {
+      console.error('Error deleting rule:', error);
       res.status(500).json({ message: "Failed to delete rule" });
     }
   });

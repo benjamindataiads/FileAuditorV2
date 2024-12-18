@@ -39,7 +39,7 @@ export const audits = pgTable("audits", {
 export const auditResults = pgTable("audit_results", {
   id: serial("id").primaryKey(),
   auditId: integer("audit_id").references(() => audits.id).notNull(),
-  ruleId: integer("rule_id").references(() => rules.id).notNull(),
+  ruleId: integer("rule_id").references(() => rules.id, { onDelete: "cascade" }).notNull(),
   productId: text("product_id").notNull(),
   status: text("status").notNull(), // "ok" | "warning" | "critical"
   details: text("details"),
