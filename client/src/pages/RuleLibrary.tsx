@@ -39,6 +39,7 @@ export function RuleLibrary() {
         description: "Rule deleted successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/rules"] });
+      queryClient.refetchQueries({ queryKey: ["/api/rules"] });
     },
     onError: () => {
       toast({
