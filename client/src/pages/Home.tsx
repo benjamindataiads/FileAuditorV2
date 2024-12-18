@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { ValidationPreview } from "@/components/ValidationPreview";
 import type { Rule } from "@/lib/types";
 
 type Step = "upload" | "rules" | "processing";
@@ -16,6 +17,26 @@ export function Home() {
   const [selectedRules, setSelectedRules] = useState<number[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [, setLocation] = useLocation();
+  const [previewKey, setPreviewKey] = useState(0);
+
+  const previewMutation = useMutation({
+    mutationFn: async ({ file, rules }: { file: File; rules: number[] }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("rules", JSON.stringify(rules));
+
+      const response = await fetch("/api/preview-validation", {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to preview validation");
+      }
+      
+      return response.json();
+    },
+  });
 
   const { data: rules } = useQuery<Rule[]>({
     queryKey: ["/api/rules"],
@@ -46,6 +67,18 @@ export function Home() {
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
     setCurrentStep("rules");
+    // Reset preview when a new file is uploaded
+    setPreviewKey(prev => prev + 1);
+  };
+
+  // Trigger preview validation when rules or file changes
+  const handlePreviewValidation = () => {
+    if (!uploadedFile || selectedRules.length === 0) return;
+    
+    previewMutation.mutate({
+      file: uploadedFile,
+      rules: selectedRules,
+    });
   };
 
   const handleStartAudit = () => {
@@ -107,11 +140,12 @@ export function Home() {
                     id={`rule-${rule.id}`}
                     checked={selectedRules.includes(rule.id)}
                     onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedRules([...selectedRules, rule.id]);
-                      } else {
-                        setSelectedRules(selectedRules.filter((id) => id !== rule.id));
-                      }
+                      const newSelectedRules = checked
+                        ? [...selectedRules, rule.id]
+                        : selectedRules.filter((id) => id !== rule.id);
+                      setSelectedRules(newSelectedRules);
+                      // Trigger preview validation when rules change
+                      setPreviewKey(prev => prev + 1);
                     }}
                   />
                   <label
@@ -123,6 +157,16 @@ export function Home() {
                 </div>
               ))}
             </div>
+            {selectedRules.length > 0 && uploadedFile && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Validation Preview</h3>
+                <ValidationPreview
+                  key={previewKey}
+                  results={previewMutation.data?.results || []}
+                  isLoading={previewMutation.isPending}
+                />
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button variant="outline" onClick={goBack}>

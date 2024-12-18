@@ -12,6 +12,29 @@ import crypto from "crypto";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Helper function to validate a single product
+async function validateProduct(product: any, selectedRuleIds: number[]) {
+  const results = [];
+  
+  for (const ruleId of selectedRuleIds) {
+    const rule = await db.query.rules.findFirst({
+      where: eq(rules.id, ruleId)
+    });
+
+    if (!rule) continue;
+
+    const result = evaluateRule(product, rule);
+    results.push({
+      productId: product.id || "unknown",
+      fieldName: rule.condition.field,
+      status: result.status,
+      details: result.details,
+    });
+  }
+
+  return results;
+}
+
 export function registerRoutes(app: Express): Server {
   // Get all rules
   app.get("/api/rules", async (_req, res) => {
@@ -154,6 +177,42 @@ export function registerRoutes(app: Express): Server {
   });
 
   // File upload and audit execution
+  // Preview validation endpoint
+  app.post("/api/preview-validation", upload.single("file"), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    try {
+      const fileContent = req.file.buffer.toString();
+      const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
+      const previewLimit = 5; // Limit preview to first 5 products
+      
+      const parser = csvParse(fileContent, {
+        delimiter: '\t',
+        columns: true,
+        to: previewLimit,
+      });
+
+      const products = [];
+      const results = [];
+      
+      for await (const record of parser) {
+        products.push(record);
+        const productResults = await validateProduct(record, selectedRules);
+        results.push(...productResults);
+      }
+
+      res.json({
+        totalProducts: products.length,
+        results,
+      });
+    } catch (error) {
+      console.error('Preview validation error:', error);
+      res.status(500).json({ message: "Failed to preview validation" });
+    }
+  });
+
   app.post("/api/audit", upload.single("file"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
