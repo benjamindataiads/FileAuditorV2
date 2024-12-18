@@ -5,6 +5,17 @@ import { Button } from "@/components/ui/button";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardHeader,
@@ -108,17 +119,37 @@ export function RuleLibrary() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this rule?")) {
-                          deleteMutation.mutate(rule.id);
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Rule</AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-2">
+                            <p>Are you sure you want to delete this rule?</p>
+                            <div className="mt-4 p-4 bg-muted rounded-lg space-y-2">
+                              <p><strong>Name:</strong> {rule.name}</p>
+                              <p><strong>Category:</strong> {rule.category}</p>
+                              <p><strong>Description:</strong> {rule.description}</p>
+                              <p><strong>Condition:</strong> {formatCondition(rule.condition)}</p>
+                              <p><strong>Criticality:</strong> {rule.criticality}</p>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteMutation.mutate(rule.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete Rule
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
