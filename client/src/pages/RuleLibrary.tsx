@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -135,7 +142,66 @@ export function RuleLibrary() {
                       {rule.criticality}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="space-x-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Rule Details</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="font-semibold">Name:</div>
+                            <div>{rule.name}</div>
+                            
+                            <div className="font-semibold">Category:</div>
+                            <div>{rule.category}</div>
+                            
+                            <div className="font-semibold">Description:</div>
+                            <div>{rule.description}</div>
+                            
+                            <div className="font-semibold">Criticality:</div>
+                            <div>
+                              <Badge
+                                variant={rule.criticality === "critical" ? "destructive" : "secondary"}
+                              >
+                                {rule.criticality}
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="font-semibold">Condition Details:</div>
+                            <div className="bg-muted p-4 rounded-lg space-y-2">
+                              <p><strong>Type:</strong> {rule.condition.type}</p>
+                              <p><strong>Field:</strong> {rule.condition.field}</p>
+                              {rule.condition.value && (
+                                <p><strong>Value:</strong> {
+                                  typeof rule.condition.value === 'object' 
+                                    ? JSON.stringify(rule.condition.value, null, 2)
+                                    : rule.condition.value
+                                }</p>
+                              )}
+                              {rule.condition.caseSensitive !== undefined && (
+                                <p><strong>Case Sensitive:</strong> {rule.condition.caseSensitive ? "Yes" : "No"}</p>
+                              )}
+                              {rule.condition.dateFormat && (
+                                <p><strong>Date Format:</strong> {rule.condition.dateFormat}</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-muted-foreground">
+                            Created at: {new Date(rule.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm">
