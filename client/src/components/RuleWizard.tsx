@@ -30,22 +30,34 @@ const formSchema = z.object({
       required_error: "Please select a condition type",
     }),
     field: z.string().min(1, "Field name is required"),
-    value: z.union([
-      z.string(),
-      z.number(),
-      z.undefined()
-    ]).optional(),
-  }).refine((data) => {
+    value: z.any().superRefine((val, ctx) => {
+      if (val === undefined || val === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Value is required",
+        });
+        return;
+      }
+      return val;
+    }),
+  }).superRefine((data, ctx) => {
     if (data.type === "minLength") {
-      return typeof data.value === "number" && data.value > 0;
+      const num = Number(data.value);
+      if (isNaN(num) || num <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Minimum length must be a positive number",
+          path: ["value"],
+        });
+      }
     }
-    if (data.type === "contains") {
-      return typeof data.value === "string" && data.value.length > 0;
+    if (data.type === "contains" && (!data.value || typeof data.value !== "string")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Contains value must be a non-empty string",
+        path: ["value"],
+      });
     }
-    return true;
-  }, {
-    message: "Invalid value for the selected condition type",
-    path: ["value"],
   }),
   criticality: z.enum(["warning", "critical"]),
 });
@@ -65,6 +77,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
       condition: {
         type: "notEmpty",
         field: "",
+        value: undefined,
       },
       criticality: "warning",
     },
@@ -173,11 +186,15 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                     {...field}
                     type={form.watch("condition.type") === "minLength" ? "number" : "text"}
                     onChange={(e) => {
-                      const value = form.watch("condition.type") === "minLength"
-                        ? parseInt(e.target.value)
-                        : e.target.value;
-                      field.onChange(value);
+                      const value = e.target.value;
+                      if (form.watch("condition.type") === "minLength") {
+                        const numValue = parseInt(value);
+                        field.onChange(isNaN(numValue) ? undefined : numValue);
+                      } else {
+                        field.onChange(value);
+                      }
                     }}
+                    value={field.value?.toString() ?? ""}
                   />
                 </FormControl>
                 <FormMessage />

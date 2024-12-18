@@ -16,14 +16,82 @@ export function registerRoutes(app: Express): Server {
       const allRules = await db.query.rules.findMany();
       res.json(allRules);
     } catch (error) {
+      console.error('Error fetching rules:', error);
       res.status(500).json({ message: "Failed to fetch rules" });
     }
   });
 
   // Rules endpoints
   app.post("/api/rules", async (req, res) => {
-    const rule = await db.insert(rules).values(req.body).returning();
-    res.json(rule[0]);
+    try {
+      const { name, description, category, condition, criticality } = req.body;
+      
+      // Basic validation
+      if (!name || !description || !category || !criticality) {
+        return res.status(400).json({ 
+          message: "Missing required fields", 
+          details: "All fields (name, description, category, condition, criticality) are required" 
+        });
+      }
+
+      // Validate condition
+      if (!condition || !condition.type || !condition.field) {
+        return res.status(400).json({ 
+          message: "Invalid rule condition",
+          details: "Condition must include type and field"
+        });
+      }
+
+      // Validate condition type
+      if (!["notEmpty", "minLength", "contains"].includes(condition.type)) {
+        return res.status(400).json({ 
+          message: "Invalid condition type",
+          details: "Condition type must be one of: notEmpty, minLength, contains"
+        });
+      }
+
+      // Validate criticality
+      if (!["warning", "critical"].includes(criticality)) {
+        return res.status(400).json({ 
+          message: "Invalid criticality level",
+          details: "Criticality must be either 'warning' or 'critical'"
+        });
+      }
+
+      let processedCondition = { ...condition };
+
+      // Type-specific validation
+      if (condition.type === "minLength") {
+        const minLength = parseInt(condition.value);
+        if (isNaN(minLength) || minLength <= 0) {
+          return res.status(400).json({ 
+            message: "Invalid minimum length",
+            details: "Minimum length must be a positive number"
+          });
+        }
+        processedCondition.value = minLength;
+      } else if (condition.type === "contains") {
+        if (!condition.value || typeof condition.value !== "string") {
+          return res.status(400).json({ 
+            message: "Invalid contains value",
+            details: "Contains condition requires a non-empty string value"
+          });
+        }
+      }
+
+      const rule = await db.insert(rules).values({
+        name,
+        description,
+        category,
+        condition: processedCondition,
+        criticality,
+      }).returning();
+
+      res.json(rule[0]);
+    } catch (error) {
+      console.error('Error creating rule:', error);
+      res.status(500).json({ message: "Failed to create rule" });
+    }
   });
 
   // File upload and audit execution
