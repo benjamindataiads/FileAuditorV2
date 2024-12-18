@@ -1,0 +1,58 @@
+I want to develop a web application dedicated to auditing files containing product feeds. The tool should primarily serve as a library of reusable rule templates with a rule creation wizard for defining compliance checks. Users will be able to upload product feeds, select one or multiple rules from the library, and run audits based on their chosen rules. Additionally, the tool should provide sample data to allow users to test its functionality without requiring their own files. The results should provide a clear view of product compliance with detailed statistics, visualizations, and a global scoring system, while allowing easy export of the results. All audits (including selected rules, parameters, and results) should be saved and accessible through a PostgreSQL database for later consultation.
+
+Key Features:
+
+1. Library of Rule Templates:
+	•	A centralized library where users can browse, select, and manage reusable rule templates.
+	•	Rule Categories: Templates are categorized by common use cases (e.g., mandatory fields, field length validation, cross-field checks).
+	•	Predefined Templates: Include commonly used rules such as:
+	•	title must not be empty.
+	•	title must contain the brand field of the same product (case insensitive).
+	•	description must have a minimum length of 50 characters.
+	•	Users can clone, edit, or delete templates.
+
+2. Rule Creation Wizard:
+	•	A guided interface to help users define new rule templates.
+	•	Features:
+	•	Select a field or multiple fields from the feed.
+	•	Define the rule condition (e.g., “must not be empty,” “must contain another field,” “must meet a minimum length”).
+	•	Assign a criticality level (Warning or Critical).
+	•	Save the rule to the template library.
+
+3. File Upload and Management:
+	•	Users can upload a TSV file containing a list of products with their associated fields.
+	•	The tool identifies the available columns in the file to enable rule selection and application.
+
+4. Test Mode with Sample Data:
+	•	The tool includes preloaded sample datasets to allow users to test its features without uploading their own files.
+	•	Sample Data Options:
+	•	Example feeds with diverse fields and values to simulate real-world product feeds.
+	•	Predefined scenarios for testing common rules (e.g., missing titles, short descriptions).
+	•	Users can apply rules from the library to the sample data to see how the audit and analysis work.
+
+5. Selection and Execution of Audits:
+	•	Before running an audit, users select one or multiple rules from the library.
+	•	Apply the selected rules to the uploaded product feed or sample data to determine compliance.
+	•	Each product is evaluated based on the selected rules and receives a status:
+	•	OK: The product complies with the rule.
+	•	Warning: The rule is not met at a “Warning” level.
+	•	Critical: The rule is not met at a “Critical” level.
+
+6. Storage and Management of Audits:
+	•	Save each audit (selected rules, parameters, and results) in a PostgreSQL database for future reference.
+	•	Users can access a history of audits, view detailed results, and relaunch or modify them as needed.
+
+7. Analysis and Visualization of Results:
+	•	Audit Results Section:
+	•	Display audit results with a breakdown by product, field, and rule compliance status (OK, Warning, Critical).
+	•	Include filtering options to analyze specific rules, fields, or product categories.
+	•	Display detailed statistics:
+	•	Percentage of compliant products by field and rule.
+	•	Distribution of statuses (OK, Warning, Critical) across the audit.
+	•	Generate visualizations (e.g., bar charts, pie charts) to illustrate results.
+	•	Provide a global compliance score (e.g., a rating out of 100 based on the audit results).
+
+8. Export of Results:
+	•	Allow export of audit results in CSV or Excel format, including:
+	•	Product statuses.
+	•	Details of fields and rules that failed compliance checks.
