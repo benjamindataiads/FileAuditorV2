@@ -27,10 +27,19 @@ export function Home() {
         method: "POST",
         body: formData,
       });
+      if (!response.ok) {
+        throw new Error("Failed to process audit");
+      }
       return response.json();
     },
     onSuccess: (data) => {
-      setLocation(`/audit/${data.auditId}`);
+      if (data.auditId) {
+        setLocation(`/audit/${data.auditId}`);
+      }
+    },
+    onError: (error) => {
+      console.error("Audit processing failed:", error);
+      setCurrentStep("rules"); // Go back to rules selection on error
     },
   });
 
