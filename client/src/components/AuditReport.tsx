@@ -184,7 +184,6 @@ export function AuditReport({ audit }: AuditReportProps) {
           </Button>
         </CardHeader>
         <CardContent>
-          <TooltipProvider>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -215,29 +214,31 @@ export function AuditReport({ audit }: AuditReportProps) {
                     {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => (
                       <TableCell key={ruleName} className="text-center">
                         {ruleResults[ruleName] ? (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <div className="inline-flex items-center">
-                                <Badge
-                                  variant={
-                                    ruleResults[ruleName].status === "ok"
-                                      ? "default"
-                                      : ruleResults[ruleName].status === "warning"
-                                      ? "secondary"
-                                      : "destructive"
-                                  }
-                                >
-                                  {ruleResults[ruleName].status}
-                                </Badge>
-                                {ruleResults[ruleName].details && (
-                                  <Info className="h-4 w-4 ml-1 text-muted-foreground" />
-                                )}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{ruleResults[ruleName].details}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <div className="inline-flex items-center">
+                            <Badge
+                              variant={
+                                ruleResults[ruleName].status === "ok"
+                                  ? "default"
+                                  : ruleResults[ruleName].status === "warning"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {ruleResults[ruleName].status}
+                            </Badge>
+                            {ruleResults[ruleName].details && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Info className="h-4 w-4 ml-1 text-muted-foreground" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{ruleResults[ruleName].details}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -247,7 +248,6 @@ export function AuditReport({ audit }: AuditReportProps) {
                 ))}
               </TableBody>
             </Table>
-          </TooltipProvider>
         </CardContent>
       </Card>
     </div>
