@@ -90,8 +90,9 @@ export function AuditReport({ audit }: AuditReportProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Total Products</CardTitle>
@@ -227,16 +228,14 @@ export function AuditReport({ audit }: AuditReportProps) {
                               {ruleResults[ruleName].status}
                             </Badge>
                             {ruleResults[ruleName].details && (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Info className="h-4 w-4 ml-1 text-muted-foreground" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{ruleResults[ruleName].details}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-4 w-4 ml-1 text-muted-foreground cursor-pointer" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{ruleResults[ruleName].details}</p>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         ) : (
@@ -251,5 +250,6 @@ export function AuditReport({ audit }: AuditReportProps) {
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   );
 }
