@@ -39,10 +39,9 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
         }
       });
       // Add the new mapping
-      newMapping = { ...newMapping, [header]: field };
+      newMapping[header] = field;
     }
     
-    console.log('New mapping:', newMapping); // Debug log
     setMapping(newMapping);
     onMappingComplete(newMapping);
   };
