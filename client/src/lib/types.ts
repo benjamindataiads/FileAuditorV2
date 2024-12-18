@@ -9,9 +9,11 @@ export interface Rule {
 }
 
 export interface RuleCondition {
-  type: "notEmpty" | "minLength" | "contains" | "regex" | "range" | "crossField";
+  type: "notEmpty" | "minLength" | "contains" | "regex" | "range" | "crossField" | "date";
   field: string;
   value?: any;
+  caseSensitive?: boolean;
+  dateFormat?: string;
 }
 
 export interface Audit {

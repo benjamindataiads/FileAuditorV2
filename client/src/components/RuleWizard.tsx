@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -26,9 +27,11 @@ const formSchema = z.object({
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   condition: z.object({
-    type: z.enum(["notEmpty", "minLength", "contains", "regex", "range", "crossField"], {
+    type: z.enum(["notEmpty", "minLength", "contains", "regex", "range", "crossField", "date"], {
       required_error: "Please select a condition type",
     }),
+    caseSensitive: z.boolean().optional(),
+    dateFormat: z.string().optional(),
     field: z.string().min(1, "Field name is required"),
     value: z.any().superRefine((val, ctx) => {
       if (val === undefined || val === "") {
@@ -196,6 +199,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                   <SelectItem value="regex">Matches pattern</SelectItem>
                   <SelectItem value="range">Numerical range</SelectItem>
                   <SelectItem value="crossField">Cross-field validation</SelectItem>
+                  <SelectItem value="date">Date validation</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -220,6 +224,61 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
           )}
         />
 
+        {["contains", "regex"].includes(form.watch("condition.type")) && (
+          <FormField
+            control={form.control}
+            name="condition.caseSensitive"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Case Sensitive</FormLabel>
+                  <FormDescription>
+                    Enable case-sensitive matching for this rule
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        )}
+
+        {form.watch("condition.type") === "date" && (
+          <FormField
+            control={form.control}
+            name="condition.dateFormat"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date Format</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select date format" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                    <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                    <SelectItem value="ISO">ISO 8601</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Choose the expected date format for validation
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         {form.watch("condition.type") !== "notEmpty" && (
           <FormField
             control={form.control}
@@ -233,13 +292,13 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 case "minLength":
                   inputElement = (
                     <Input
-                      {...field}
                       type="number"
+                      min="1"
                       onChange={(e) => {
-                        const numValue = parseInt(e.target.value);
-                        field.onChange(isNaN(numValue) ? undefined : numValue);
+                        const value = e.target.value;
+                        field.onChange(value ? parseInt(value) : "");
                       }}
-                      value={field.value?.toString() ?? ""}
+                      value={field.value || ""}
                     />
                   );
                   description = "Enter the minimum number of characters required";

@@ -4,7 +4,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@db";
 import { rules, audits, auditResults } from "@db/schema";
 import multer from "multer";
-import { parse } from "csv-parse";
+import { parse as csvParse } from "csv-parse/sync";
+import { parse as dateParse, isValid } from "date-fns";
 import crypto from "crypto";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -43,10 +44,10 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Validate condition type
-      if (!["notEmpty", "minLength", "contains", "regex", "range", "crossField"].includes(condition.type)) {
+      if (!["notEmpty", "minLength", "contains", "regex", "range", "crossField", "date"].includes(condition.type)) {
         return res.status(400).json({ 
           message: "Invalid condition type",
-          details: "Condition type must be one of: notEmpty, minLength, contains, regex, range, crossField"
+          details: "Condition type must be one of: notEmpty, minLength, contains, regex, range, crossField, date"
         });
       }
 
@@ -62,6 +63,15 @@ export function registerRoutes(app: Express): Server {
 
       // Type-specific validation
       switch (condition.type) {
+        case "date":
+          if (condition.dateFormat && !["YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY", "ISO"].includes(condition.dateFormat)) {
+            return res.status(400).json({
+              message: "Invalid date format",
+              details: "Date format must be one of: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, ISO"
+            });
+          }
+          break;
+
         case "minLength":
           const minLength = parseInt(condition.value);
           if (isNaN(minLength) || minLength <= 0) {
@@ -148,7 +158,7 @@ export function registerRoutes(app: Express): Server {
     const fileContent = req.file.buffer.toString();
     const fileHash = crypto.createHash('md5').update(fileContent).digest('hex');
     
-    const parser = parse(fileContent, {
+    const parser = csvParse(fileContent, {
       delimiter: '\t',
       columns: true,
     });
@@ -295,10 +305,30 @@ function evaluateRule(product: any, rule: any) {
         break;
 
       case "contains":
-        const searchValue = condition.value.toLowerCase();
-        if (!fieldValue.toLowerCase().includes(searchValue)) {
+        const searchValue = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
+        const testValue = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
+        if (!testValue.includes(searchValue)) {
           status = rule.criticality;
           details = `Field '${condition.field}' does not contain '${condition.value}'`;
+        }
+        break;
+
+      case "date":
+        try {
+          let parsedDate: Date;
+          if (condition.dateFormat === "ISO") {
+            parsedDate = new Date(fieldValue);
+          } else {
+            parsedDate = dateParse(fieldValue, condition.dateFormat || "yyyy-MM-dd", new Date());
+          }
+          
+          if (isNaN(parsedDate.getTime())) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' is not a valid date in format ${condition.dateFormat || "yyyy-MM-dd"}`;
+          }
+        } catch (e) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' has invalid date format`;
         }
         break;
 
