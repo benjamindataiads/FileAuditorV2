@@ -23,11 +23,11 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const availableFields = getFieldNames();
 
-  const handleMappingChange = (header: string, field: string | undefined) => {
+  const handleMappingChange = (header: string, field: string) => {
     const newMapping = { ...mapping };
     
-    // If field is undefined, remove the mapping
-    if (!field) {
+    // If field is "_unmapped", remove the mapping
+    if (field === "_unmapped") {
       delete newMapping[header];
     } else {
       // Remove any existing mappings for this field (exclusive mapping)
@@ -118,14 +118,14 @@ export function ColumnMapping({ file, onMappingComplete, isLoading }: ColumnMapp
         <div key={header} className="grid gap-2">
           <Label>{header}</Label>
           <Select
-            value={mapping[header] || ""}
-            onValueChange={(value) => handleMappingChange(header, value || undefined)}
+            value={mapping[header] || "_unmapped"}
+            onValueChange={(value) => handleMappingChange(header, value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select a field to map" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Do not map this column</SelectItem>
+              <SelectItem value="_unmapped">Do not map this column</SelectItem>
               {getAvailableFields(header).map((field) => (
                 <SelectItem key={field} value={field}>
                   {field} ({getFrenchFieldName(field)})
