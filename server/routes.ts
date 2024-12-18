@@ -122,8 +122,10 @@ export function registerRoutes(app: Express): Server {
           
         case "crossField":
           try {
-            const crossField = JSON.parse(condition.value);
-            if (!crossField.field || !crossField.operator || !["==", "!=", ">", ">=", "<", "<="].includes(crossField.operator)) {
+            const crossField = typeof condition.value === 'string' ? 
+              JSON.parse(condition.value) : condition.value;
+            if (!crossField.field || !crossField.operator || 
+                !["==", "!=", "contains", ">", ">=", "<", "<="].includes(crossField.operator)) {
               throw new Error();
             }
             processedCondition.value = crossField;
