@@ -110,52 +110,46 @@ export function RulePreview({ rule }: RulePreviewProps) {
 
         case "crossField":
           try {
-            console.log('Cross-field condition value:', rule.condition.value);
+            // Get the cross-field configuration
+            const crossField = rule.condition.value;
             
-            // Ensure we have a proper crossField object
-            let crossField = rule.condition.value;
-            if (typeof crossField === 'string') {
-              try {
-                crossField = JSON.parse(crossField);
-              } catch (e) {
-                console.error('Failed to parse cross-field JSON:', e);
-                return {
-                  status: "warning",
-                  message: "Invalid cross-field format",
-                };
-              }
-            }
-
-            console.log('Processed crossField:', crossField);
-
-            // Validate the structure
+            // Basic validation of the cross-field configuration
             if (!crossField || typeof crossField !== 'object') {
-              console.error('Invalid crossField structure:', crossField);
               return {
                 status: "warning",
-                message: "Invalid cross-field structure",
+                message: "Invalid cross-field configuration",
               };
             }
 
+            // Validate required properties
             if (!crossField.field || !crossField.operator) {
-              console.error('Missing required cross-field properties:', crossField);
               return {
                 status: "warning",
-                message: "Missing field or operator in cross-field condition",
+                message: "Missing field or operator in cross-field configuration",
               };
             }
 
-            // Get the comparison field value
-            const compareFieldValue = data[crossField.field];
-            if (compareFieldValue === undefined) {
+            // Get field values for comparison
+            const sourceValue = fieldValue;
+            const targetValue = data[crossField.field];
+
+            // Check if both fields exist
+            if (sourceValue === undefined) {
               return {
                 status: "warning",
-                message: `Field '${crossField.field}' not found in sample data`,
+                message: `Source field '${rule.condition.field}' not found`,
               };
             }
 
-            // Map of valid operators
-            const validOperators = {
+            if (targetValue === undefined) {
+              return {
+                status: "warning",
+                message: `Target field '${crossField.field}' not found`,
+              };
+            }
+
+            // Map of valid operators with their descriptions
+            const operatorDescriptions = {
               "==": "equal to",
               "!=": "not equal to",
               "contains": "contains",
@@ -165,28 +159,28 @@ export function RulePreview({ rule }: RulePreviewProps) {
               "<=": "less than or equal to"
             };
 
-            if (!validOperators[crossField.operator as keyof typeof validOperators]) {
-              console.error('Invalid operator:', crossField.operator);
+            const operator = crossField.operator as keyof typeof operatorDescriptions;
+            if (!operatorDescriptions[operator]) {
               return {
                 status: "warning",
-                message: `Invalid operator: ${crossField.operator}`,
+                message: `Unsupported operator: ${operator}`,
               };
             }
 
-            const compareResult = compareValues(fieldValue, compareFieldValue, crossField.operator);
-            const operatorText = validOperators[crossField.operator as keyof typeof validOperators];
+            // Perform the comparison
+            const result = compareValues(sourceValue, targetValue, operator);
+            const operatorText = operatorDescriptions[operator];
 
             return {
-              status: compareResult ? "ok" : rule.criticality,
-              message: compareResult
-                ? `Field '${rule.condition.field}' (${fieldValue}) is ${operatorText} '${crossField.field}' (${compareFieldValue})`
-                : `Field '${rule.condition.field}' (${fieldValue}) is not ${operatorText} '${crossField.field}' (${compareFieldValue})`,
+              status: result ? "ok" : rule.criticality,
+              message: `${rule.condition.field} (${sourceValue}) is ${result ? '' : 'not '}${operatorText} ${crossField.field} (${targetValue})`,
             };
+
           } catch (error) {
             console.error('Cross-field validation error:', error);
             return {
               status: "warning",
-              message: "Failed to process cross-field validation",
+              message: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
             };
           }
 
@@ -270,19 +264,46 @@ export function RulePreview({ rule }: RulePreviewProps) {
   };
 
   // Helper function for cross-field comparisons
-  const compareValues = (value1: string, value2: string, operator: string) => {
-    const v1 = value1.toLowerCase();
-    const v2 = value2.toLowerCase();
+  const compareValues = (value1: any, value2: any, operator: string) => {
+    // Convert values to strings for comparison, but keep original for numeric operations
+    const v1 = String(value1).toLowerCase();
+    const v2 = String(value2).toLowerCase();
     
-    switch (operator) {
-      case "==": return v1 === v2;
-      case "!=": return v1 !== v2;
-      case "contains": return v1.includes(v2);
-      case ">": return parseFloat(v1) > parseFloat(v2);
-      case ">=": return parseFloat(v1) >= parseFloat(v2);
-      case "<": return parseFloat(v1) < parseFloat(v2);
-      case "<=": return parseFloat(v1) <= parseFloat(v2);
-      default: return false;
+    try {
+      switch (operator) {
+        case "==": 
+          return v1 === v2;
+        case "!=": 
+          return v1 !== v2;
+        case "contains": 
+          return v1.includes(v2);
+        case ">": {
+          const num1 = parseFloat(value1);
+          const num2 = parseFloat(value2);
+          return !isNaN(num1) && !isNaN(num2) && num1 > num2;
+        }
+        case ">=": {
+          const num1 = parseFloat(value1);
+          const num2 = parseFloat(value2);
+          return !isNaN(num1) && !isNaN(num2) && num1 >= num2;
+        }
+        case "<": {
+          const num1 = parseFloat(value1);
+          const num2 = parseFloat(value2);
+          return !isNaN(num1) && !isNaN(num2) && num1 < num2;
+        }
+        case "<=": {
+          const num1 = parseFloat(value1);
+          const num2 = parseFloat(value2);
+          return !isNaN(num1) && !isNaN(num2) && num1 <= num2;
+        }
+        default:
+          console.warn('Unsupported operator:', operator);
+          return false;
+      }
+    } catch (error) {
+      console.error('Error comparing values:', error);
+      return false;
     }
   };
 
