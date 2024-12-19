@@ -196,7 +196,8 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 <Input {...field} />
               </FormControl>
               <FormDescription>
-                Choose a category to organize rules, such as "Mandatory Fields", "Content Quality", "Cross-field Validation"
+                Choose a category to organize rules, such as "Mandatory Fields", "Content Quality", "Cross-field Validation".
+                Categories help group related rules together for better organization.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -228,6 +229,44 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                   <SelectItem value="date">Date validation</SelectItem>
                 </SelectContent>
               </Select>
+              <FormDescription className="mt-2 space-y-2">
+                <p className="font-medium">Rule Types and Their Behavior:</p>
+                
+                <div className="pl-4 space-y-2 text-sm">
+                  <p><strong>Must not be empty:</strong>
+                    • OK: Field has any non-whitespace content
+                    • Violation: Field is empty or contains only spaces</p>
+                    
+                  <p><strong>Minimum length:</strong>
+                    • OK: Field length meets or exceeds the minimum
+                    • Violation: Field length is below the minimum</p>
+                    
+                  <p><strong>Contains value:</strong>
+                    • OK: Field contains the specified text
+                    • Violation: Field doesn't contain the text</p>
+                    
+                  <p><strong>Matches pattern:</strong>
+                    • OK: Field matches the regex pattern
+                    • Violation: Field doesn't match the pattern</p>
+                    
+                  <p><strong>Numerical range:</strong>
+                    • OK: Number is within the specified range
+                    • Violation: Number is outside the range or not numeric</p>
+                    
+                  <p><strong>Cross-field validation:</strong>
+                    • OK: Relationship between fields is valid
+                    • Violation: Fields don't satisfy the specified relationship</p>
+                    
+                  <p><strong>Date validation:</strong>
+                    • OK: Valid date in the specified format
+                    • Violation: Invalid date or wrong format</p>
+                </div>
+
+                <p className="text-sm mt-2">
+                  The severity of violations (Warning vs Critical) is determined by 
+                  the Criticality setting below.
+                </p>
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -257,8 +296,9 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 </SelectContent>
               </Select>
               <FormDescription>
-                Select the field to validate from the product feed
-              </FormDescription>
+                  Select the field from the product feed that this rule will validate.
+                  The rule will be applied to this field's value during validation.
+                </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -273,7 +313,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 <div className="space-y-0.5">
                   <FormLabel className="text-base">Case Sensitive</FormLabel>
                   <FormDescription>
-                    Enable case-sensitive matching for this rule
+                    Enable case-sensitive matching for this rule.  If enabled, the rule will be case-sensitive.
                   </FormDescription>
                 </div>
                 <FormControl>
@@ -311,7 +351,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  Choose the expected date format for validation
+                  Choose the expected date format for validation.  The rule will check if the field's date matches this format.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -341,7 +381,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                       value={field.value || ""}
                     />
                   );
-                  description = "Enter the minimum number of characters required";
+                  description = "Enter the minimum number of characters required.  For example, '5' requires at least 5 characters.";
                   break;
                 case "contains":
                   inputElement = (
@@ -351,7 +391,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                       value={field.value?.toString() ?? ""}
                     />
                   );
-                  description = "Enter the text that must be contained in the field";
+                  description = "Enter the text that must be contained in the field. For example, 'example' will trigger a warning if the field does not contain 'example'.";
                   break;
                 case "regex":
                   inputElement = (
@@ -362,7 +402,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                       value={field.value?.toString() ?? ""}
                     />
                   );
-                  description = "Enter a valid regular expression pattern";
+                  description = "Enter a valid regular expression pattern. For example, '^[A-Za-z0-9]+$' will match strings containing only alphanumeric characters.";
                   break;
                 case "range":
                   inputElement = (
@@ -389,7 +429,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                       />
                     </div>
                   );
-                  description = "Enter the minimum and maximum values for the range";
+                  description = "Enter the minimum and maximum values for the range. For example, '{\"min\": 10, \"max\": 100}' will trigger a warning if the value is outside of this range.";
                   break;
                 case "crossField":
                   inputElement = (
@@ -438,7 +478,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                       </Select>
                     </div>
                   );
-                  description = "Select an operator and field to compare";
+                  description = "Select an operator and field to compare.  The rule will compare the values of these two fields.";
                   break;
                 default:
                   inputElement = (
@@ -482,6 +522,11 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                   <SelectItem value="critical">Critical</SelectItem>
                 </SelectContent>
               </Select>
+              <FormDescription>
+                Select the severity level for rule violations:
+                • Warning: Used for non-critical issues that should be reviewed but don't prevent product usage
+                • Critical: Used for severe issues that must be fixed before the product can be used
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
