@@ -17,6 +17,7 @@ export function Home() {
   const [selectedRules, setSelectedRules] = useState<number[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [auditName, setAuditName] = useState("");
   const [, setLocation] = useLocation();
 
   const { data: rules } = useQuery<Rule[]>({
@@ -67,6 +68,7 @@ export function Home() {
     setCurrentStep("processing");
     const formData = new FormData();
     formData.append("file", uploadedFile);
+    formData.append("name", auditName);
     formData.append("rules", JSON.stringify(selectedRules));
     formData.append("columnMapping", JSON.stringify(columnMapping));
     uploadMutation.mutate(formData);
@@ -125,7 +127,20 @@ export function Home() {
           <CardHeader>
             <CardTitle>Step 1: Upload Product Feed</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="audit-name" className="text-sm font-medium">
+                Audit Name
+              </label>
+              <input
+                id="audit-name"
+                type="text"
+                value={auditName}
+                onChange={(e) => setAuditName(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter audit name"
+              />
+            </div>
             <FileUpload
               onUpload={handleFileUpload}
               accept=".tsv"
