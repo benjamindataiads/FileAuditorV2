@@ -32,9 +32,15 @@ async function validateProduct(product: any, selectedRuleIds: number[], columnMa
     const result = evaluateRule(mappedProduct, rule);
     // Find the file column that maps to 'identifiant'
     const idColumn = Object.entries(columnMapping)
-      .find(([_, appField]) => appField === 'identifiant')?.[0];
+      .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
+      // Direct field access if it exists in the product
+      (product.identifiant ? 'identifiant' : null);
     
-    const productId = idColumn ? product[idColumn] : 'NO_ID_MAPPED';
+    console.log('Validation - Column Mapping:', columnMapping);
+    console.log('Validation - ID Column:', idColumn);
+    console.log('Validation - Product:', product);
+    
+    const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
     
     results.push({
       productId,
@@ -294,13 +300,16 @@ export function registerRoutes(app: Express): Server {
 
       // Find the file column that maps to 'identifiant'
       const idColumn = Object.entries(columnMapping)
-        .find(([_, appField]) => appField === 'identifiant')?.[0];
+        .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
+        // Direct field access if it exists in the product
+        (product.identifiant ? 'identifiant' : null);
       
+      console.log('Column Mapping:', columnMapping);
       console.log('ID Column:', idColumn);
       console.log('Product:', product);
       console.log('Mapped Product:', mappedProduct);
       
-      const productId = idColumn ? product[idColumn] : 'NO_ID_MAPPED';
+      const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
 
       for (const ruleId of selectedRules) {
         const rule = await db.query.rules.findFirst({
