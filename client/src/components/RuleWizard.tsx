@@ -539,6 +539,27 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
       </form>
 
       <div className="mt-8 pt-8 border-t">
+        <div className="mb-6 space-y-2">
+          <h3 className="text-lg font-semibold">Rule Validation Preview</h3>
+          <p className="text-sm text-muted-foreground">
+            Test your rule with sample data before creating it. See how different inputs will affect the validation outcome:
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-2 text-sm">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span><strong>OK:</strong> Product meets the rule criteria</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-yellow-500" />
+              <span><strong>Warning:</strong> Non-critical validation issue</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <span><strong>Critical:</strong> Severe validation issue that must be fixed</span>
+            </div>
+          </div>
+        </div>
+        
         <RulePreview 
           rule={{
             condition: form.watch("condition"),
