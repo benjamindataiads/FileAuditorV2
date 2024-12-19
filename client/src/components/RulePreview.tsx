@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import type { Rule } from "@/lib/types";
+import { parse as dateParse, isValid } from "date-fns";
 
 interface RulePreviewProps {
   rule: Partial<Rule>;
@@ -98,6 +99,51 @@ export function RulePreview({ rule }: RulePreviewProps) {
             message: `Value ${num} is ${num >= range.min && num <= range.max ? "within" : "outside"} range ${range.min}-${range.max}`,
           };
 
+        case "crossField":
+          const crossField = typeof rule.condition.value === 'string' 
+            ? JSON.parse(rule.condition.value)
+            : rule.condition.value;
+          
+          const compareFieldValue = data[crossField.field];
+          if (compareFieldValue === undefined) {
+            return {
+              status: "warning",
+              message: `Comparison field '${crossField.field}' not found in sample data`,
+            };
+          }
+
+          const compareResult = compareValues(fieldValue, compareFieldValue, crossField.operator);
+          return {
+            status: compareResult ? "ok" : rule.criticality,
+            message: compareResult
+              ? `Fields satisfy the ${crossField.operator} condition`
+              : `Fields do not satisfy the ${crossField.operator} condition`,
+          };
+
+        case "date":
+          try {
+            let parsedDate;
+            if (rule.condition.dateFormat === "ISO") {
+              parsedDate = new Date(fieldValue);
+            } else {
+              const format = rule.condition.dateFormat?.replace("YYYY", "yyyy") || "yyyy-MM-dd";
+              parsedDate = dateParse(fieldValue, format, new Date());
+            }
+            
+            const isValid = !isNaN(parsedDate.getTime());
+            return {
+              status: isValid ? "ok" : rule.criticality,
+              message: isValid
+                ? "Date is valid and matches the specified format"
+                : `Invalid date format (expected: ${rule.condition.dateFormat || "yyyy-MM-dd"})`,
+            };
+          } catch {
+            return {
+              status: rule.criticality,
+              message: "Invalid date value",
+            };
+          }
+
         default:
           return {
             status: "warning",
@@ -113,6 +159,63 @@ export function RulePreview({ rule }: RulePreviewProps) {
     }
   }, [sampleData, rule]);
 
+  // Generate sample data template based on rule type
+  const getSampleTemplate = () => {
+    if (!rule.condition?.field) return "{}";
+
+    const field = rule.condition.field;
+    let template: Record<string, any> = {};
+
+    switch (rule.condition.type) {
+      case "notEmpty":
+        template = { [field]: "Sample text" };
+        break;
+      case "minLength":
+        template = { [field]: "abc" }; // Short text to demonstrate minimum length
+        break;
+      case "contains":
+        template = { [field]: "This is a sample text" };
+        break;
+      case "regex":
+        template = { [field]: "abc123" }; // Example for alphanumeric pattern
+        break;
+      case "range":
+        template = { [field]: "50" }; // Middle value for range
+        break;
+      case "crossField":
+        const crossField = rule.condition.value?.field || "otherField";
+        template = {
+          [field]: "Value 1",
+          [crossField]: "Value 2"
+        };
+        break;
+      case "date":
+        template = { [field]: "2024-01-01" }; // ISO date format
+        break;
+      default:
+        template = { [field]: "value" };
+    }
+
+    return JSON.stringify(template, null, 2);
+  };
+
+  // Helper function for cross-field comparisons
+  const compareValues = (value1: string, value2: string, operator: string) => {
+    const v1 = value1.toLowerCase();
+    const v2 = value2.toLowerCase();
+    
+    switch (operator) {
+      case "==": return v1 === v2;
+      case "!=": return v1 !== v2;
+      case "contains": return v1.includes(v2);
+      case ">": return parseFloat(v1) > parseFloat(v2);
+      case ">=": return parseFloat(v1) >= parseFloat(v2);
+      case "<": return parseFloat(v1) < parseFloat(v2);
+      case "<=": return parseFloat(v1) <= parseFloat(v2);
+      default: return false;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -124,7 +227,7 @@ export function RulePreview({ rule }: RulePreviewProps) {
             Sample JSON Data
           </label>
           <Textarea
-            placeholder={`{\n  "${rule.condition?.field || 'fieldName'}": "value"\n}`}
+            placeholder={getSampleTemplate()}
             value={sampleData}
             onChange={(e) => {
               setSampleData(e.target.value);
