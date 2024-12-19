@@ -109,25 +109,53 @@ export function RulePreview({ rule }: RulePreviewProps) {
           };
 
         case "crossField":
-          const crossField = typeof rule.condition.value === 'string' 
-            ? JSON.parse(rule.condition.value)
-            : rule.condition.value;
-          
-          const compareFieldValue = data[crossField.field];
-          if (compareFieldValue === undefined) {
+          try {
+            const crossField = typeof rule.condition.value === 'string' 
+              ? JSON.parse(rule.condition.value)
+              : rule.condition.value;
+
+            // Validate crossField structure
+            if (!crossField || !crossField.field || !crossField.operator) {
+              return {
+                status: "warning",
+                message: "Invalid cross-field condition format",
+              };
+            }
+            
+            const compareFieldValue = data[crossField.field];
+            if (compareFieldValue === undefined) {
+              return {
+                status: "warning",
+                message: `Comparison field '${crossField.field}' not found in sample data`,
+              };
+            }
+
+            const compareResult = compareValues(fieldValue, compareFieldValue, crossField.operator);
+            
+            // Use more descriptive messages
+            const operatorText = {
+              "==": "equal to",
+              "!=": "not equal to",
+              "contains": "contains",
+              ">": "greater than",
+              ">=": "greater than or equal to",
+              "<": "less than",
+              "<=": "less than or equal to"
+            }[crossField.operator] || crossField.operator;
+
+            return {
+              status: compareResult ? "ok" : rule.criticality,
+              message: compareResult
+                ? `Field '${rule.condition.field}' (${fieldValue}) is ${operatorText} '${crossField.field}' (${compareFieldValue})`
+                : `Field '${rule.condition.field}' (${fieldValue}) is not ${operatorText} '${crossField.field}' (${compareFieldValue})`,
+            };
+          } catch (error) {
+            console.error('Cross-field validation error:', error);
             return {
               status: "warning",
-              message: `Comparison field '${crossField.field}' not found in sample data`,
+              message: "Invalid cross-field condition configuration",
             };
           }
-
-          const compareResult = compareValues(fieldValue, compareFieldValue, crossField.operator);
-          return {
-            status: compareResult ? "ok" : rule.criticality,
-            message: compareResult
-              ? `Fields satisfy the ${crossField.operator} condition`
-              : `Fields do not satisfy the ${crossField.operator} condition`,
-          };
 
         case "date":
           try {
