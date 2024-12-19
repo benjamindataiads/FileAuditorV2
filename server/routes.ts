@@ -30,11 +30,11 @@ async function validateProduct(product: any, selectedRuleIds: number[], columnMa
     if (!rule) continue;
 
     const result = evaluateRule(mappedProduct, rule);
-    // Get product ID from the mapped 'identifiant' field or fall back to original field
-    const productId = mappedProduct.identifiant || 
-                     Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] && 
-                     product[Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] || ''] ||
-                     'NO_ID_MAPPED';
+    // Find the file column that maps to 'identifiant'
+    const idColumn = Object.entries(columnMapping)
+      .find(([_, appField]) => appField === 'identifiant')?.[0];
+    
+    const productId = idColumn ? product[idColumn] : 'NO_ID_MAPPED';
     
     results.push({
       productId,
@@ -281,18 +281,26 @@ export function registerRoutes(app: Express): Server {
     // Execute rules and store results
     const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
     
+    console.log('Column Mapping:', columnMapping);
+    
     for (const product of products) {
       // Create a mapped product with our field names
       const mappedProduct: Record<string, any> = {};
       Object.entries(columnMapping).forEach(([fileColumn, appField]) => {
-        mappedProduct[appField] = product[fileColumn];
+        if (fileColumn && appField) {
+          mappedProduct[appField] = product[fileColumn];
+        }
       });
 
-      // Get product ID from the mapped 'identifiant' field
-      const productId = mappedProduct.identifiant || 
-                       Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] && 
-                       product[Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] || ''] ||
-                       'NO_ID_MAPPED';
+      // Find the file column that maps to 'identifiant'
+      const idColumn = Object.entries(columnMapping)
+        .find(([_, appField]) => appField === 'identifiant')?.[0];
+      
+      console.log('ID Column:', idColumn);
+      console.log('Product:', product);
+      console.log('Mapped Product:', mappedProduct);
+      
+      const productId = idColumn ? product[idColumn] : 'NO_ID_MAPPED';
 
       for (const ruleId of selectedRules) {
         const rule = await db.query.rules.findFirst({
