@@ -20,6 +20,7 @@ export function Home() {
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [, setLocation] = useLocation();
   const [previewKey, setPreviewKey] = useState(0);
+  const [sampleMode, setSampleMode] = useState<"first" | "random" | "last">("first");
 
   useEffect(() => {
     if (selectedRules.length > 0 && uploadedFile) {
@@ -33,6 +34,7 @@ export function Home() {
       formData.append("file", file);
       formData.append("rules", JSON.stringify(rules));
       formData.append("columnMapping", JSON.stringify(columnMapping));
+      formData.append("sampleMode", sampleMode);
 
       const response = await fetch("/api/preview-validation", {
         method: "POST",
@@ -215,6 +217,17 @@ export function Home() {
                   key={previewKey}
                   results={previewMutation.data?.results || []}
                   isLoading={previewMutation.isPending}
+                  sampleMode={sampleMode}
+                  onSampleModeChange={(mode) => {
+                    setSampleMode(mode);
+                    // Trigger a new preview when sample mode changes
+                    if (uploadedFile && selectedRules.length > 0) {
+                      previewMutation.mutate({
+                        file: uploadedFile,
+                        rules: selectedRules,
+                      });
+                    }
+                  }}
                 />
                 {previewMutation.isError && (
                   <p className="text-sm text-red-500 mt-2">

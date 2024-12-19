@@ -19,12 +19,21 @@ interface ValidationResult {
   details: string;
 }
 
+type SampleMode = "first" | "random" | "last";
+
 interface ValidationPreviewProps {
   results: ValidationResult[];
   isLoading?: boolean;
+  sampleMode?: SampleMode;
+  onSampleModeChange?: (mode: SampleMode) => void;
 }
 
-export function ValidationPreview({ results, isLoading }: ValidationPreviewProps) {
+export function ValidationPreview({ 
+  results, 
+  isLoading, 
+  sampleMode = "first",
+  onSampleModeChange 
+}: ValidationPreviewProps) {
   const { summary, groupedResults } = useMemo(() => {
     const grouped = results.reduce((acc, result) => {
       const key = result.productId;
@@ -77,6 +86,42 @@ export function ValidationPreview({ results, isLoading }: ValidationPreviewProps
           <AlertCircle className="h-4 w-4 text-red-500" />
           {summary.critical} Critical
         </Badge>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm text-muted-foreground">Sample:</span>
+        <div className="flex border rounded-lg overflow-hidden">
+          <button
+            className={`px-3 py-1.5 text-sm ${
+              sampleMode === "first"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted"
+            }`}
+            onClick={() => onSampleModeChange?.("first")}
+          >
+            First
+          </button>
+          <button
+            className={`px-3 py-1.5 text-sm border-l ${
+              sampleMode === "random"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted"
+            }`}
+            onClick={() => onSampleModeChange?.("random")}
+          >
+            Random
+          </button>
+          <button
+            className={`px-3 py-1.5 text-sm border-l ${
+              sampleMode === "last"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-muted"
+            }`}
+            onClick={() => onSampleModeChange?.("last")}
+          >
+            Last
+          </button>
+        </div>
       </div>
 
       <ScrollArea className="h-[300px] rounded-md border">

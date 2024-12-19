@@ -193,19 +193,39 @@ export function registerRoutes(app: Express): Server {
       const fileContent = req.file.buffer.toString();
       const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
       const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
-      const previewLimit = 5; // Limit preview to first 5 products
+      const sampleMode = req.body.sampleMode || "first";
       
-      const parser = csvParse(fileContent, {
+      // First parse all rows to get total count
+      const allRows = csvParse(fileContent, {
         delimiter: '\t',
         columns: true,
-        to: previewLimit,
       });
-
-      const products = [];
+      
+      const totalRows = allRows.length;
+      const sampleSize = 5;
+      
+      // Select rows based on sample mode
+      let selectedRows: any[] = [];
+      switch (sampleMode) {
+        case "first":
+          selectedRows = allRows.slice(0, sampleSize);
+          break;
+        case "last":
+          selectedRows = allRows.slice(Math.max(0, totalRows - sampleSize));
+          break;
+        case "random":
+          // Get unique random indices
+          const indices = new Set<number>();
+          while (indices.size < Math.min(sampleSize, totalRows)) {
+            indices.add(Math.floor(Math.random() * totalRows));
+          }
+          selectedRows = Array.from(indices).map(index => allRows[index]);
+          break;
+      }
+      
       const results = [];
       
-      for await (const record of parser) {
-        products.push(record);
+      for (const record of selectedRows) {
         const productResults = await validateProduct(record, selectedRules, columnMapping);
         results.push(...productResults);
       }
