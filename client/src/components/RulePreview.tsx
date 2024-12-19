@@ -110,30 +110,52 @@ export function RulePreview({ rule }: RulePreviewProps) {
 
         case "crossField":
           try {
-            const crossField = typeof rule.condition.value === 'string' 
-              ? JSON.parse(rule.condition.value)
-              : rule.condition.value;
+            console.log('Cross-field condition value:', rule.condition.value);
+            
+            // Ensure we have a proper crossField object
+            let crossField = rule.condition.value;
+            if (typeof crossField === 'string') {
+              try {
+                crossField = JSON.parse(crossField);
+              } catch (e) {
+                console.error('Failed to parse cross-field JSON:', e);
+                return {
+                  status: "warning",
+                  message: "Invalid cross-field format",
+                };
+              }
+            }
 
-            // Validate crossField structure
-            if (!crossField || !crossField.field || !crossField.operator) {
+            console.log('Processed crossField:', crossField);
+
+            // Validate the structure
+            if (!crossField || typeof crossField !== 'object') {
+              console.error('Invalid crossField structure:', crossField);
               return {
                 status: "warning",
-                message: "Invalid cross-field condition format",
+                message: "Invalid cross-field structure",
               };
             }
-            
+
+            if (!crossField.field || !crossField.operator) {
+              console.error('Missing required cross-field properties:', crossField);
+              return {
+                status: "warning",
+                message: "Missing field or operator in cross-field condition",
+              };
+            }
+
+            // Get the comparison field value
             const compareFieldValue = data[crossField.field];
             if (compareFieldValue === undefined) {
               return {
                 status: "warning",
-                message: `Comparison field '${crossField.field}' not found in sample data`,
+                message: `Field '${crossField.field}' not found in sample data`,
               };
             }
 
-            const compareResult = compareValues(fieldValue, compareFieldValue, crossField.operator);
-            
-            // Use more descriptive messages
-            const operatorText = {
+            // Map of valid operators
+            const validOperators = {
               "==": "equal to",
               "!=": "not equal to",
               "contains": "contains",
@@ -141,7 +163,18 @@ export function RulePreview({ rule }: RulePreviewProps) {
               ">=": "greater than or equal to",
               "<": "less than",
               "<=": "less than or equal to"
-            }[crossField.operator] || crossField.operator;
+            };
+
+            if (!validOperators[crossField.operator as keyof typeof validOperators]) {
+              console.error('Invalid operator:', crossField.operator);
+              return {
+                status: "warning",
+                message: `Invalid operator: ${crossField.operator}`,
+              };
+            }
+
+            const compareResult = compareValues(fieldValue, compareFieldValue, crossField.operator);
+            const operatorText = validOperators[crossField.operator as keyof typeof validOperators];
 
             return {
               status: compareResult ? "ok" : rule.criticality,
@@ -153,7 +186,7 @@ export function RulePreview({ rule }: RulePreviewProps) {
             console.error('Cross-field validation error:', error);
             return {
               status: "warning",
-              message: "Invalid cross-field condition configuration",
+              message: "Failed to process cross-field validation",
             };
           }
 
