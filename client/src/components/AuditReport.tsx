@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Info } from "lucide-react";
+import { Download, Info, CheckCircle2, MinusCircle, AlertCircle } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -61,7 +61,7 @@ export function AuditReport({ audit }: AuditReportProps) {
       }
       acc[key].push(result);
       return acc;
-    }, {} as Record<string, typeof audit.results>);
+    }, {} as Record<string, Array<(typeof results)[number]>>);
   };
 
   const handleExport = () => {
@@ -195,7 +195,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Product ID</TableHead>
-                    {[...new Set(audit.results?.map(r => r.rule?.name))].map((ruleName) => (
+                    {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => (
                       <TableHead key={ruleName} className="text-center font-bold">
                         {ruleName}
                       </TableHead>
@@ -206,7 +206,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                   {Object.entries(getGroupedResults()).map(([productId, results]) => (
                     <TableRow key={productId}>
                       <TableCell className="font-medium">{productId}</TableCell>
-                      {[...new Set(audit.results?.map(r => r.rule?.name))].map((ruleName) => {
+                      {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => {
                         const result = results.find(r => r.rule?.name === ruleName);
                         return (
                           <TableCell key={ruleName} className="text-center">
@@ -216,13 +216,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                                   <TooltipTrigger asChild>
                                     <div className="inline-flex items-center justify-center">
                                       <Badge
-                                        variant={
-                                          result.status === "ok"
-                                            ? "success"
-                                            : result.status === "warning"
-                                            ? "warning"
-                                            : "destructive"
-                                        }
+                                        variant="outline"
                                         className={
                                           result.status === "ok"
                                             ? "bg-green-100 text-green-800"
