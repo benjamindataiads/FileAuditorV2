@@ -10,6 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import type { Rule } from "@/lib/types";
 import { parse as dateParse, isValid } from "date-fns";
+import { sampleProducts } from "@/lib/sampleProducts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface RulePreviewProps {
   rule: Partial<Rule>;
@@ -18,6 +26,7 @@ interface RulePreviewProps {
 export function RulePreview({ rule }: RulePreviewProps) {
   const [sampleData, setSampleData] = useState("");
   const [isValidJson, setIsValidJson] = useState(true);
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
 
   const validationResult = useMemo(() => {
     if (!sampleData || !isValidJson || !rule.condition) return null;
@@ -216,6 +225,14 @@ export function RulePreview({ rule }: RulePreviewProps) {
     }
   };
 
+  const handleProductSelect = (productId: string) => {
+    setSelectedProductId(productId);
+    const product = sampleProducts.find((p) => p.id === productId);
+    if (product) {
+      setSampleData(JSON.stringify(product, null, 2));
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -224,7 +241,35 @@ export function RulePreview({ rule }: RulePreviewProps) {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium">
-            Sample JSON Data
+            Select Sample Product
+          </label>
+          <Select
+            value={selectedProductId}
+            onValueChange={(value) => {
+              setSelectedProductId(value);
+              const product = sampleProducts.find(p => p.id === value);
+              if (product) {
+                setSampleData(JSON.stringify(product, null, 2));
+                setIsValidJson(true);
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a product to test" />
+            </SelectTrigger>
+            <SelectContent>
+              {sampleProducts.map((product) => (
+                <SelectItem key={product.id} value={product.id}>
+                  {product.id} - {product.title || '[No Title]'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Product Data
           </label>
           <Textarea
             placeholder={getSampleTemplate()}
@@ -238,7 +283,7 @@ export function RulePreview({ rule }: RulePreviewProps) {
                 setIsValidJson(false);
               }
             }}
-            className="font-mono"
+            className="font-mono min-h-[200px]"
           />
           {!isValidJson && (
             <p className="text-sm text-destructive">
