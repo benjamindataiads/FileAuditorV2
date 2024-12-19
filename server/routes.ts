@@ -30,8 +30,14 @@ async function validateProduct(product: any, selectedRuleIds: number[], columnMa
     if (!rule) continue;
 
     const result = evaluateRule(mappedProduct, rule);
+    // Get product ID from the mapped 'identifiant' field or fall back to original field
+    const productId = mappedProduct.identifiant || 
+                     Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] && 
+                     product[Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] || ''] ||
+                     'NO_ID_MAPPED';
+    
     results.push({
-      productId: mappedProduct.id || product.id || "unknown",
+      productId,
       fieldName: rule.condition.field,
       status: result.status,
       details: result.details,
@@ -231,7 +237,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       res.json({
-        totalProducts: products.length,
+        totalProducts: selectedRows.length,
         results,
       });
     } catch (error) {
@@ -273,7 +279,21 @@ export function registerRoutes(app: Express): Server {
     const auditId = audit[0].id;
 
     // Execute rules and store results
+    const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
+    
     for (const product of products) {
+      // Create a mapped product with our field names
+      const mappedProduct: Record<string, any> = {};
+      Object.entries(columnMapping).forEach(([fileColumn, appField]) => {
+        mappedProduct[appField] = product[fileColumn];
+      });
+
+      // Get product ID from the mapped 'identifiant' field
+      const productId = mappedProduct.identifiant || 
+                       Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] && 
+                       product[Object.entries(columnMapping).find(([_, field]) => field === 'identifiant')?.[0] || ''] ||
+                       'NO_ID_MAPPED';
+
       for (const ruleId of selectedRules) {
         const rule = await db.query.rules.findFirst({
           where: eq(rules.id, ruleId)
@@ -281,12 +301,12 @@ export function registerRoutes(app: Express): Server {
 
         if (!rule) continue;
 
-        const result = evaluateRule(product, rule);
+        const result = evaluateRule(mappedProduct, rule);
         
         await db.insert(auditResults).values({
           auditId,
           ruleId,
-          productId: product.id || "unknown",
+          productId,
           status: result.status,
           details: result.details,
         });
