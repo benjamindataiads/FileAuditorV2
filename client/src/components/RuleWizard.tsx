@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import type { Rule } from "@/lib/types";
 import { getFieldNames } from "@/lib/fieldMappings";
+import { RulePreview } from "./RulePreview";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -532,10 +533,19 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
           )}
         />
 
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="mb-8">
           {isSubmitting ? "Creating..." : "Create Rule"}
         </Button>
       </form>
+
+      <div className="mt-8 pt-8 border-t">
+        <RulePreview 
+          rule={{
+            condition: form.watch("condition"),
+            criticality: form.watch("criticality"),
+          }}
+        />
+      </div>
     </Form>
   );
 }
