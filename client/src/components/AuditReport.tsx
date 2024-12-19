@@ -190,59 +190,78 @@ export function AuditReport({ audit }: AuditReportProps) {
             </Button>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => (
-                    <TableHead key={ruleName} className="text-center">
-                      {ruleName}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(getGroupedResults()).map(([productId, results]) => (
-                  <TableRow key={productId}>
-                    <TableCell>{productId}</TableCell>
-                    {[...new Set(audit.results?.map(r => r.rule?.name) || [])].map((ruleName) => {
-                      const result = results.find(r => r.rule?.name === ruleName);
-                      return (
-                        <TableCell key={ruleName} className="text-center">
-                          {result ? (
-                            <div className="inline-flex items-center">
-                              <Badge
-                                variant={
-                                  result.status === "ok"
-                                    ? "default"
-                                    : result.status === "warning"
-                                    ? "secondary"
-                                    : "destructive"
-                                }
-                              >
-                                {result.status}
-                              </Badge>
-                              {result.details && (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-bold">Product ID</TableHead>
+                    {[...new Set(audit.results?.map(r => r.rule?.name))].map((ruleName) => (
+                      <TableHead key={ruleName} className="text-center font-bold">
+                        {ruleName}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(getGroupedResults()).map(([productId, results]) => (
+                    <TableRow key={productId}>
+                      <TableCell className="font-medium">{productId}</TableCell>
+                      {[...new Set(audit.results?.map(r => r.rule?.name))].map((ruleName) => {
+                        const result = results.find(r => r.rule?.name === ruleName);
+                        return (
+                          <TableCell key={ruleName} className="text-center">
+                            {result ? (
+                              <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Info className="h-4 w-4 ml-1 text-muted-foreground cursor-pointer" />
+                                    <div className="inline-flex items-center justify-center">
+                                      <Badge
+                                        variant={
+                                          result.status === "ok"
+                                            ? "success"
+                                            : result.status === "warning"
+                                            ? "warning"
+                                            : "destructive"
+                                        }
+                                        className={
+                                          result.status === "ok"
+                                            ? "bg-green-100 text-green-800"
+                                            : result.status === "warning"
+                                            ? "bg-yellow-100 text-yellow-800"
+                                            : "bg-red-100 text-red-800"
+                                        }
+                                      >
+                                        {result.status === "ok" && (
+                                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                                        )}
+                                        {result.status === "warning" && (
+                                          <MinusCircle className="h-4 w-4 mr-1" />
+                                        )}
+                                        {result.status === "critical" && (
+                                          <AlertCircle className="h-4 w-4 mr-1" />
+                                        )}
+                                        {result.status}
+                                      </Badge>
+                                    </div>
                                   </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{result.details}</p>
-                                  </TooltipContent>
+                                  {result.details && (
+                                    <TooltipContent className="max-w-sm">
+                                      <p className="text-sm">{result.details}</p>
+                                    </TooltipContent>
+                                  )}
                                 </Tooltip>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                              </TooltipProvider>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
