@@ -365,6 +365,19 @@ export function registerRoutes(app: Express): Server {
 
 
   // Get audit results
+  // Get all audits
+  app.get("/api/audits", async (_req, res) => {
+    try {
+      const allAudits = await db.query.audits.findMany({
+        orderBy: (audits, { desc }) => [desc(audits.createdAt)],
+      });
+      res.json(allAudits);
+    } catch (error) {
+      console.error('Error fetching audits:', error);
+      res.status(500).json({ message: "Failed to fetch audits" });
+    }
+  });
+
   app.get("/api/audits/:id", async (req, res) => {
     const audit = await db.query.audits.findFirst({
       where: eq(audits.id, parseInt(req.params.id)),
