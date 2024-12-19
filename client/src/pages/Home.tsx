@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
-import { ValidationPreview } from "@/components/ValidationPreview";
 import { ColumnMapping } from "@/components/ColumnMapping";
 import type { Rule } from "@/lib/types";
 
@@ -19,35 +18,6 @@ export function Home() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [, setLocation] = useLocation();
-  const [previewKey, setPreviewKey] = useState(0);
-  const [sampleMode, setSampleMode] = useState<"first" | "random" | "last">("first");
-
-  useEffect(() => {
-    if (selectedRules.length > 0 && uploadedFile) {
-      handlePreviewValidation();
-    }
-  }, [selectedRules, uploadedFile]);
-
-  const previewMutation = useMutation({
-    mutationFn: async ({ file, rules }: { file: File; rules: number[] }) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("rules", JSON.stringify(rules));
-      formData.append("columnMapping", JSON.stringify(columnMapping));
-      formData.append("sampleMode", sampleMode);
-
-      const response = await fetch("/api/preview-validation", {
-        method: "POST",
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to preview validation");
-      }
-      
-      return response.json();
-    },
-  });
 
   const { data: rules } = useQuery<Rule[]>({
     queryKey: ["/api/rules"],
@@ -80,7 +50,7 @@ export function Home() {
     setCurrentStep("mapping");
     setColumnMapping({});
     // Reset preview when a new file is uploaded
-    setPreviewKey(prev => prev + 1);
+    //setPreviewKey(prev => prev + 1);  Removed as preview is gone
   };
 
   const handleMappingComplete = (mapping: Record<string, string>) => {
@@ -89,21 +59,6 @@ export function Home() {
 
   const handleMappingContinue = () => {
     setCurrentStep("rules");
-  };
-
-  // Trigger preview validation when rules or file changes
-  const handlePreviewValidation = () => {
-    if (!uploadedFile || selectedRules.length === 0) return;
-    
-    const formData = new FormData();
-    formData.append("file", uploadedFile);
-    formData.append("rules", JSON.stringify(selectedRules));
-    formData.append("columnMapping", JSON.stringify(columnMapping));
-    
-    previewMutation.mutate({
-      file: uploadedFile,
-      rules: selectedRules,
-    });
   };
 
   const handleStartAudit = () => {
@@ -197,8 +152,6 @@ export function Home() {
                         ? [...selectedRules, rule.id]
                         : selectedRules.filter((id) => id !== rule.id);
                       setSelectedRules(newSelectedRules);
-                      // Trigger preview validation when rules change
-                      setPreviewKey(prev => prev + 1);
                     }}
                   />
                   <label
@@ -210,32 +163,6 @@ export function Home() {
                 </div>
               ))}
             </div>
-            {selectedRules.length > 0 && uploadedFile && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-4">Validation Preview</h3>
-                <ValidationPreview
-                  key={previewKey}
-                  results={previewMutation.data?.results || []}
-                  isLoading={previewMutation.isPending}
-                  sampleMode={sampleMode}
-                  onSampleModeChange={(mode) => {
-                    setSampleMode(mode);
-                    // Trigger a new preview when sample mode changes
-                    if (uploadedFile && selectedRules.length > 0) {
-                      previewMutation.mutate({
-                        file: uploadedFile,
-                        rules: selectedRules,
-                      });
-                    }
-                  }}
-                />
-                {previewMutation.isError && (
-                  <p className="text-sm text-red-500 mt-2">
-                    Error loading preview: {previewMutation.error.message}
-                  </p>
-                )}
-              </div>
-            )}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button variant="outline" onClick={goBack}>
