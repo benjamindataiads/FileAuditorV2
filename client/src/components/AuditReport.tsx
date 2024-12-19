@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Info, CheckCircle2, MinusCircle, AlertCircle } from "lucide-react";
+import { Download, CheckCircle2, MinusCircle, AlertCircle } from "lucide-react";
 import {
   PieChart,
   Pie,
