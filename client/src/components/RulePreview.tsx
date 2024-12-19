@@ -19,6 +19,50 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Helper function for cross-field comparisons
+const compareValues = (value1: any, value2: any, operator: string) => {
+  // Convert values to strings for comparison, but keep original for numeric operations
+  const v1 = String(value1).toLowerCase();
+  const v2 = String(value2).toLowerCase();
+  
+  try {
+    switch (operator) {
+      case "==": 
+        return v1 === v2;
+      case "!=": 
+        return v1 !== v2;
+      case "contains": 
+        return v1.includes(v2);
+      case ">": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 > num2;
+      }
+      case ">=": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 >= num2;
+      }
+      case "<": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 < num2;
+      }
+      case "<=": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 <= num2;
+      }
+      default:
+        console.warn('Unsupported operator:', operator);
+        return false;
+    }
+  } catch (error) {
+    console.error('Error comparing values:', error);
+    return false;
+  }
+};
+
 interface RulePreviewProps {
   rule: Partial<Rule>;
 }
@@ -76,7 +120,7 @@ export function RulePreview({ rule }: RulePreviewProps) {
 
         case "regex":
           try {
-            const regex = new RegExp(rule.condition.value || "", 'i');
+            const regex = new RegExp(rule.condition.value || "", rule.condition.caseSensitive ? '' : 'i');
             return {
               status: regex.test(fieldValue) ? "ok" : rule.criticality,
               message: regex.test(fieldValue)
@@ -194,10 +238,10 @@ export function RulePreview({ rule }: RulePreviewProps) {
               parsedDate = dateParse(fieldValue, format, new Date());
             }
             
-            const isValid = !isNaN(parsedDate.getTime());
+            const isDateValid = !isNaN(parsedDate.getTime());
             return {
-              status: isValid ? "ok" : rule.criticality,
-              message: isValid
+              status: isDateValid ? "ok" : rule.criticality,
+              message: isDateValid
                 ? "Date is valid and matches the specified format"
                 : `Invalid date format (expected: ${rule.condition.dateFormat || "yyyy-MM-dd"})`,
             };
@@ -261,58 +305,6 @@ export function RulePreview({ rule }: RulePreviewProps) {
     }
 
     return JSON.stringify(template, null, 2);
-  };
-
-  // Helper function for cross-field comparisons
-  const compareValues = (value1: any, value2: any, operator: string) => {
-    // Convert values to strings for comparison, but keep original for numeric operations
-    const v1 = String(value1).toLowerCase();
-    const v2 = String(value2).toLowerCase();
-    
-    try {
-      switch (operator) {
-        case "==": 
-          return v1 === v2;
-        case "!=": 
-          return v1 !== v2;
-        case "contains": 
-          return v1.includes(v2);
-        case ">": {
-          const num1 = parseFloat(value1);
-          const num2 = parseFloat(value2);
-          return !isNaN(num1) && !isNaN(num2) && num1 > num2;
-        }
-        case ">=": {
-          const num1 = parseFloat(value1);
-          const num2 = parseFloat(value2);
-          return !isNaN(num1) && !isNaN(num2) && num1 >= num2;
-        }
-        case "<": {
-          const num1 = parseFloat(value1);
-          const num2 = parseFloat(value2);
-          return !isNaN(num1) && !isNaN(num2) && num1 < num2;
-        }
-        case "<=": {
-          const num1 = parseFloat(value1);
-          const num2 = parseFloat(value2);
-          return !isNaN(num1) && !isNaN(num2) && num1 <= num2;
-        }
-        default:
-          console.warn('Unsupported operator:', operator);
-          return false;
-      }
-    } catch (error) {
-      console.error('Error comparing values:', error);
-      return false;
-    }
-  };
-
-  const handleProductSelect = (productId: string) => {
-    setSelectedProductId(productId);
-    const product = sampleProducts.find((p) => p.id === productId);
-    if (product) {
-      setSampleData(JSON.stringify(product, null, 2));
-    }
   };
 
   return (
