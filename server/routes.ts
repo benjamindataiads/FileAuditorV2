@@ -67,6 +67,7 @@ export function registerRoutes(app: Express): Server {
 
   // Rules endpoints
   app.post("/api/rules", async (req, res) => {
+    console.log('Received rule creation request:', req.body);
     try {
       const { name, description, category, condition, criticality } = req.body;
       
