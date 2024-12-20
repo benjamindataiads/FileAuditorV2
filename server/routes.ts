@@ -68,6 +68,7 @@ export function registerRoutes(app: Express): Server {
   // Rules endpoints
   app.post("/api/rules", async (req, res) => {
     console.log('Received rule creation request:', req.body);
+    console.log('Database URL exists:', !!process.env.DATABASE_URL);
     try {
       const { name, description, category, condition, criticality } = req.body;
       
