@@ -42,9 +42,10 @@ app.use((req, res, next) => {
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    log(`Error: ${status} - ${message}`); //Added more detailed logging
 
     res.status(status).json({ message });
-    throw err;
+    //throw err; //Removing throw err to prevent double logging and potential infinite loops
   });
 
   // importantly only setup vite in development and after
@@ -56,10 +57,15 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const PORT = 5000;
+  // Use environment variable for port, default to 3000
+  const PORT = process.env.PORT || 3000;
   server.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
+  }).on('error', (err) => {
+    console.error('Server error:', err);
+    if(err.code === 'EADDRINUSE'){
+        console.error(`Port ${PORT} is already in use. Please choose a different port.`);
+    }
+    process.exit(1);
   });
 })();
