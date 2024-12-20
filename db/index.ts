@@ -1,15 +1,15 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
-import * as schema from "@db/schema";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema';
+
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error('DATABASE_URL environment variable is not set');
+  console.error('Please set up a database using the Database tool in Replit');
+  process.exit(1);
 }
 
-export const db = drizzle({
-  connection: process.env.DATABASE_URL,
-  schema,
-  ws: ws,
-});
+const client = postgres(databaseUrl);
+export const db = drizzle(client, { schema });
