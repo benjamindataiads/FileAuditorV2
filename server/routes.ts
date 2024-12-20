@@ -192,7 +192,9 @@ export function registerRoutes(app: Express): Server {
       res.json(rule[0]);
     } catch (error) {
       console.error('Error creating rule:', error);
-      res.status(500).json({ message: "Failed to create rule" });
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error('Detailed error:', errorMessage);
+      res.status(500).json({ message: `Failed to create rule: ${errorMessage}` });
     }
   });
 
