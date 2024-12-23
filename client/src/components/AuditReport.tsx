@@ -235,12 +235,12 @@ export function AuditReport({ audit }: AuditReportProps) {
                     warning: (item.warning / item.total) * 100,
                     critical: (item.critical / item.total) * 100
                   }))}
-                  layout="vertical"
-                  margin={{ top: 20, right: 30, left: 150, bottom: 5 }}
+                  layout="horizontal"
+                  margin={{ top: 20, right: 30, left: 150, bottom: 40 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" unit="%" domain={[0, 100]} />
-                  <YAxis type="category" dataKey="rule" width={140} />
+                  <XAxis type="category" dataKey="rule" angle={-45} textAnchor="end" interval={0} height={100} />
+                  <YAxis type="number" unit="%" domain={[0, 100]} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
                   <Legend />
                   <Bar dataKey="ok" stackId="stack" fill="#22c55e" name="Compliant" />
