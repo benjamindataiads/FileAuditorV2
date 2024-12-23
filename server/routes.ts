@@ -126,6 +126,15 @@ export function registerRoutes(app: Express): Server {
             });
           }
           break;
+
+        case "doesntContain":
+          const searchValue2 = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
+          const testValue2 = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
+          if (testValue2.includes(searchValue2)) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' contains '${condition.value}' (forbidden value)`;
+          }
+          break;
           
         case "regex":
           try {

@@ -6,7 +6,7 @@ import { z } from "zod";
 
 // Define the condition schema for better type safety
 const ruleConditionSchema = z.object({
-  type: z.enum(["notEmpty", "minLength", "maxLength", "contains", "regex", "range", "crossField", "date"]),
+  type: z.enum(["notEmpty", "minLength", "maxLength", "contains", "doesntContain", "regex", "range", "crossField", "date"]),
   field: z.string(),
   value: z.any().optional(),
   caseSensitive: z.boolean().optional(),
