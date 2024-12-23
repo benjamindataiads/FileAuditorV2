@@ -1,4 +1,5 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -36,13 +37,15 @@ export const audits = pgTable("audits", {
 });
 
 // Audit results table to store detailed results
-export const auditResults = pgTable("audit_results", {
-  id: serial("id").primaryKey(),
-  auditId: integer("audit_id").references(() => audits.id).notNull(),
-  ruleId: integer("rule_id").references(() => rules.id, { onDelete: "cascade" }).notNull(),
-  productId: text("product_id").notNull(),
-  status: text("status").notNull(), // "ok" | "warning" | "critical"
-  details: text("details"),
+export const auditResults = pgTable('audit_results', {
+  id: serial('id').primaryKey(),
+  auditId: integer('audit_id').references(() => audits.id, { onDelete: 'cascade' }),
+  ruleId: integer('rule_id').references(() => rules.id),
+  productId: varchar('product_id').notNull(),
+  status: varchar('status', { enum: ['ok', 'warning', 'critical'] }).notNull(),
+  details: varchar('details'),
+  fieldName: varchar('field_name'),
+  createdAt: timestamp('created_at').defaultNow()
 });
 
 // Relations
@@ -78,16 +81,5 @@ export type Rule = typeof rules.$inferSelect;
 export type InsertRule = typeof rules.$inferInsert;
 export type Audit = typeof audits.$inferSelect;
 export type InsertAudit = typeof audits.$inferInsert;
-export const auditResults = pgTable('audit_results', {
-  id: serial('id').primaryKey(),
-  auditId: integer('audit_id').references(() => audits.id, { onDelete: 'cascade' }),
-  ruleId: integer('rule_id').references(() => rules.id),
-  productId: varchar('product_id').notNull(),
-  status: varchar('status', { enum: ['ok', 'warning', 'critical'] }).notNull(),
-  details: varchar('details'),
-  fieldName: varchar('field_name'),
-  createdAt: timestamp('created_at').defaultNow()
-});
-
 export type AuditResult = typeof auditResults.$inferSelect;
 export type InsertAuditResult = typeof auditResults.$inferInsert;
