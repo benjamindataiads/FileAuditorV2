@@ -428,7 +428,11 @@ async function loadRules(ruleIds: number[]): Promise<any[]> {
 }
 
 async function insertResultsBatch(results: any[], auditId: number): Promise<void> {
-    await db.insert(auditResults).values(results);
+    const resultsWithAuditId = results.map(result => ({
+        ...result,
+        auditId: auditId
+    }));
+    await db.insert(auditResults).values(resultsWithAuditId);
 }
 
 
