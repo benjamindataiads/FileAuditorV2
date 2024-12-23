@@ -364,44 +364,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-app.put("/api/rules/:id", async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid rule ID" });
-    }
-
-    const { name, description, category, condition, criticality } = req.body;
-    
-    // Validation checks as in POST endpoint
-    if (!name || !description || !category || !criticality) {
-      return res.status(400).json({ 
-        message: "Missing required fields"
-      });
-    }
-
-    const updatedRule = await db.update(rules)
-      .set({
-        name,
-        description,
-        category,
-        condition,
-        criticality,
-      })
-      .where(eq(rules.id, id))
-      .returning();
-
-    if (!updatedRule.length) {
-      return res.status(404).json({ message: "Rule not found" });
-    }
-
-    res.json(updatedRule[0]);
-  } catch (error) {
-    console.error('Error updating rule:', error);
-    res.status(500).json({ message: "Failed to update rule" });
-  }
-});
-
 app.delete("/api/rules/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -741,31 +703,22 @@ function evaluateRule(product: any, rule: any) {
           break;
 
         case "crossField":
-          try {
-            const crossFieldConfig = typeof condition.value === 'string' ? 
-              JSON.parse(condition.value) : condition.value;
-            const { field: compareFieldName, operator } = crossFieldConfig;
-            const compareFieldValue = getFieldValue(compareFieldName);
-            
-            if (!compareValues(fieldValue, compareFieldValue, operator)) {
-              const operatorMap = {
-                "==": "equal to",
-                "!=": "not equal to",
-                ">": "greater than",
-                ">=": "greater than or equal to",
-                "<": "less than",
-                "<=": "less than or equal to",
-                "contains": "containing"
-              } as const;
+          const { field: compareFieldName, operator } = condition.value;
+          const compareFieldValue = getFieldValue(compareFieldName);
+          
+          if (!compareValues(fieldValue, compareFieldValue, operator)) {
+            const operatorMap = {
+              "==": "equal to",
+              "!=": "not equal to",
+              ">": "greater than",
+              ">=": "greater than or equal to",
+              "<": "less than",
+              "<=": "less than or equal to"
+            } as const;
 
-              const operatorText = operatorMap[operator as keyof typeof operatorMap];
-              status = rule.criticality;
-              details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
-            }
-          } catch (error) {
-            console.error('Cross-field validation error:', error);
-            status = "warning";
-            details = `Error validating cross-field rule: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            const operatorText = operatorMap[operator as keyof typeof operatorMap];
+            status = rule.criticality;
+            details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
           }
           break;
       }

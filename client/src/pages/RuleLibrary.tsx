@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Plus, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { queryClient } from "@/lib/queryClient";
@@ -143,16 +143,6 @@ export function RuleLibrary() {
                     </Badge>
                   </TableCell>
                   <TableCell className="space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        window.localStorage.setItem('editRule', JSON.stringify(rule));
-                        setLocation('/edit-rule');
-                      }}
-                    >
-                      Edit
-                    </Button>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="ghost" size="sm">
