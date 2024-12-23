@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
@@ -30,7 +29,7 @@ export function EditRule() {
       const response = await fetch(`/api/rules/${rule.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, id: rule.id }),
       });
       
       if (!response.ok) {

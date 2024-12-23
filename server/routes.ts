@@ -366,6 +366,7 @@ export function registerRoutes(app: Express): Server {
 
 app.put("/api/rules/:id", async (req, res) => {
   try {
+    console.log('Received rule update request:', req.body);
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       return res.status(400).json({ message: "Invalid rule ID" });
