@@ -204,24 +204,25 @@ const filteredRules = useMemo(() => {
                 <div key={rule.id} className="flex items-center space-x-2 border-l-2 pl-2" style={{ borderColor: 'hsl(var(--muted))' }}>
                   <div className="flex-1 flex items-center space-x-2">
                     <Checkbox
-                    id={`rule-${rule.id}`}
-                    checked={selectedRules.includes(rule.id)}
-                    onCheckedChange={(checked) => {
-                      const newSelectedRules = checked
-                        ? [...selectedRules, rule.id]
-                        : selectedRules.filter((id) => id !== rule.id);
-                      setSelectedRules(newSelectedRules);
-                    }}
-                  />
-                  <label
-                    htmlFor={`rule-${rule.id}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    <div className="flex flex-col">
-                      <span>{rule.name}</span>
-                      <span className="text-xs text-muted-foreground">{rule.category}</span>
-                    </div>
-                  </label>
+                      id={`rule-${rule.id}`}
+                      checked={selectedRules.includes(rule.id)}
+                      onCheckedChange={(checked) => {
+                        const newSelectedRules = checked
+                          ? [...selectedRules, rule.id]
+                          : selectedRules.filter((id) => id !== rule.id);
+                        setSelectedRules(newSelectedRules);
+                      }}
+                    />
+                    <label
+                      htmlFor={`rule-${rule.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      <div className="flex flex-col">
+                        <span>{rule.name}</span>
+                        <span className="text-xs text-muted-foreground">{rule.category}</span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>
