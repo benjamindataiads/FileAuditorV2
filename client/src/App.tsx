@@ -1,26 +1,31 @@
+
 import React from "react";
-import { Route, Switch } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Home } from "./pages/Home";
 import { AuditResults } from "./pages/AuditResults";
 import { RuleLibrary } from "./pages/RuleLibrary";
 import { CreateRule } from "./pages/CreateRule";
 import { EditRule } from "./pages/EditRule";
 import { AuditHistory } from "./pages/AuditHistory";
+import { Navigation } from "./components/Navigation";
 
 function App() {
   return (
-    <div className="App">
-      <main className="container mx-auto py-6">
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/rule-library" component={RuleLibrary} />
-          <Route path="/create-rule" component={CreateRule} />
-          <Route path="/rule-edit" component={EditRule} />
-          <Route path="/audit/:id" component={AuditResults} />
-          <Route path="/audits" component={AuditHistory} />
-        </Switch>
-      </main>
-    </div>
+    <BrowserRouter>
+      <div className="App">
+        <Navigation />
+        <main className="container mx-auto py-6">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/rule-library" element={<RuleLibrary />} />
+            <Route path="/create-rule" element={<CreateRule />} />
+            <Route path="/rule-edit" element={<EditRule />} />
+            <Route path="/audit/:id" element={<AuditResults />} />
+            <Route path="/audits" element={<AuditHistory />} />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
   );
 }
 
