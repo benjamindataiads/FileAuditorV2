@@ -128,11 +128,11 @@ export function registerRoutes(app: Express): Server {
           break;
 
         case "doesntContain":
-          const searchValue2 = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
-          const testValue2 = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
-          if (testValue2.includes(searchValue2)) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' contains '${condition.value}' (forbidden value)`;
+          if (!condition.value || typeof condition.value !== "string") {
+            return res.status(400).json({ 
+              message: "Invalid doesn't contain value",
+              details: "Doesn't contain condition requires a non-empty string value"
+            });
           }
           break;
           
