@@ -103,6 +103,12 @@ export function RulePreview({ rule }: RulePreviewProps) {
             message: `Field length is ${fieldValue.length} (minimum: ${rule.condition.value})`,
           };
 
+        case "maxLength":
+          return {
+            status: fieldValue.length <= (rule.condition.value || 0) ? "ok" : rule.criticality,
+            message: `Field length is ${fieldValue.length} (maximum: ${rule.condition.value})`,
+          };
+
         case "contains":
           const searchValue = rule.condition.caseSensitive 
             ? rule.condition.value 
