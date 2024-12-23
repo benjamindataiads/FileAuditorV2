@@ -10,6 +10,13 @@
                       >
                         Edit
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLocation(`/rule-edit/${rule.id}`)}
+                      >
+                        Edit
+                      </Button>
 </old_str>
 <new_str>
                       <Button
@@ -19,6 +26,13 @@
                           window.localStorage.setItem('editRule', JSON.stringify(rule));
                           setLocation('/rule-edit');
                         }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLocation(`/rule-edit/${rule.id}`)}
                       >
                         Edit
                       </Button>

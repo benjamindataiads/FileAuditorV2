@@ -19,7 +19,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/rule-library" element={<RuleLibrary />} />
             <Route path="/create-rule" element={<CreateRule />} />
-            <Route path="/rule-edit" element={<EditRule />} />
+            <Route path="/rule-edit/:id" element={<EditRule />} />
             <Route path="/audit/:id" element={<AuditResults />} />
             <Route path="/audits" element={<AuditHistory />} />
           </Routes>
