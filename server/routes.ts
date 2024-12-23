@@ -545,7 +545,8 @@ async function insertResultsBatch(results: any[], auditId: number): Promise<void
         ruleId: result.ruleId,
         productId: result.productId,
         status: result.status,
-        details: result.details || null
+        details: result.details || null,
+        fieldName: result.fieldName
     }));
     
     console.log('Inserting batch results:', resultsWithAuditId);

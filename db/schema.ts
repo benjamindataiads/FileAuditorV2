@@ -78,5 +78,16 @@ export type Rule = typeof rules.$inferSelect;
 export type InsertRule = typeof rules.$inferInsert;
 export type Audit = typeof audits.$inferSelect;
 export type InsertAudit = typeof audits.$inferInsert;
+export const auditResults = pgTable('audit_results', {
+  id: serial('id').primaryKey(),
+  auditId: integer('audit_id').references(() => audits.id, { onDelete: 'cascade' }),
+  ruleId: integer('rule_id').references(() => rules.id),
+  productId: varchar('product_id').notNull(),
+  status: varchar('status', { enum: ['ok', 'warning', 'critical'] }).notNull(),
+  details: varchar('details'),
+  fieldName: varchar('field_name'),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
 export type AuditResult = typeof auditResults.$inferSelect;
 export type InsertAuditResult = typeof auditResults.$inferInsert;
