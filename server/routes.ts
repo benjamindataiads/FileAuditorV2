@@ -45,7 +45,7 @@ async function validateProduct(product: any, selectedRules: any[], columnMapping
 
 export function registerRoutes(app: Express): Server {
   // Get all rules
-  app.get("/api/rule-library", async (_req, res) => {
+  app.get("/api/rules", async (_req, res) => {
     try {
       const allRules = await db.query.rules.findMany();
       res.json(allRules);
@@ -366,22 +366,12 @@ export function registerRoutes(app: Express): Server {
 
 app.put("/api/rules/:id", async (req, res) => {
   try {
-    console.log('Received rule update request:', req.body);
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       return res.status(400).json({ message: "Invalid rule ID" });
     }
 
     const { name, description, category, condition, criticality } = req.body;
-    
-    // Check if rule exists first
-    const existingRule = await db.query.rules.findFirst({
-      where: eq(rules.id, id)
-    });
-
-    if (!existingRule) {
-      return res.status(404).json({ message: "Rule not found" });
-    }
     
     // Validation checks as in POST endpoint
     if (!name || !description || !category || !criticality) {
@@ -400,6 +390,10 @@ app.put("/api/rules/:id", async (req, res) => {
       })
       .where(eq(rules.id, id))
       .returning();
+
+    if (!updatedRule.length) {
+      return res.status(404).json({ message: "Rule not found" });
+    }
 
     res.json(updatedRule[0]);
   } catch (error) {

@@ -14,7 +14,7 @@ export function Navbar() {
             </span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link href="/rule-library">
+            <Link href="/rules">
               <Button variant="ghost">Rule Library</Button>
             </Link>
             <Link href="/create-rule">

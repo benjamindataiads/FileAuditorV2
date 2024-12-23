@@ -8,7 +8,7 @@ export function Navigation() {
   const links = [
     { href: "/", label: "Home", icon: Home },
     { href: "/audits", label: "Audit History", icon: BarChart2 },
-    { href: "/rule-library", label: "Rule Library", icon: BarChart2 },
+    { href: "/rules", label: "Rule Library", icon: BarChart2 },
     { href: "/create-rule", label: "Create Rule", icon: BarChart2 },
   ];
 

@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { RuleWizard } from "@/components/RuleWizard";
 import type { Rule } from "@/lib/types";
 import { queryClient } from "@/lib/queryClient";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export function EditRule() {
   const [, setLocation] = useLocation();
@@ -30,7 +30,7 @@ export function EditRule() {
       const response = await fetch(`/api/rules/${rule.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, id: rule.id }),
+        body: JSON.stringify(values),
       });
       
       if (!response.ok) {
@@ -42,7 +42,7 @@ export function EditRule() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Rule updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/rule-library"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rules"] });
       setLocation('/rule-library');
     },
     onError: (error: Error) => {
@@ -61,6 +61,7 @@ export function EditRule() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Edit Rule</h1>
+
       <Card>
         <CardHeader>
           <CardTitle>Rule Definition</CardTitle>
