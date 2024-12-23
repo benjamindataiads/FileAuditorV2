@@ -53,19 +53,25 @@ export function AuditReport({ audit }: AuditReportProps) {
   };
 
   const getGroupedResults = () => {
+    console.log("Processing audit results:", audit);
     if (!audit?.results?.length) {
       console.log("No results found in audit");
       return {};
     }
     const grouped = audit.results.reduce((acc, result) => {
-      const key = result.productId || 'unknown';
+      // Ensure we have a valid productId
+      if (!result.productId) {
+        console.log("Missing productId for result:", result);
+        return acc;
+      }
+      const key = result.productId;
       if (!acc[key]) {
         acc[key] = [];
       }
       acc[key].push(result);
       return acc;
     }, {} as Record<string, Array<(typeof audit.results)[number]>>);
-    console.log("Grouped results:", grouped);
+    console.log("Grouped results by product:", grouped);
     return grouped;
   };
 
