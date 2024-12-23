@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Rule } from "@/lib/types";
 
 export function RuleLibrary() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: rules, isLoading } = useQuery<Rule[]>({
     queryKey: ["/api/rules"],
