@@ -448,11 +448,16 @@ export function registerRoutes(app: Express): Server {
     }
 
     // Create new audit with same rules
-    const ruleIds = [...new Set(oldAudit.results?.map(r => r.ruleId))];
+    const ruleIds = [...new Set(oldAudit.results?.map(r => r.ruleId))].filter(Boolean);
     const rules = await loadRules(ruleIds);
     
-    if (!rules.length) {
-      return res.status(400).json({ message: "No valid rules found for this audit" });
+    if (!rules || rules.length === 0) {
+      // Use original results if no rules found
+      const results = oldAudit.results || [];
+      if (results.length === 0) {
+        return res.status(400).json({ message: "No results found for this audit" });
+      }
+      rules.push(...results.map(r => r.rule).filter(Boolean));
     }
 
     // Get all unique products from old audit
