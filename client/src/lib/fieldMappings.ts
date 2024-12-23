@@ -41,6 +41,7 @@ export const fieldMappings: Record<string, FieldMapping> = {
   shipping_height: { en: "shipping_height", fr: "Hauteur du colis" },
   shipping_label: { en: "shipping_label", fr: "Pays d'origine" },
   tax: { en: "tax", fr: "Taxe" },
+  sale_price: { en: "sale_price", fr: "Prix soldé" },
   identifier_exists: { en: "identifier_exists", fr: "Code produit unique" },
   color: { en: "color", fr: "Couleur" },
   size: { en: "size", fr: "Taille" },
