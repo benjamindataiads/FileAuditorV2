@@ -203,10 +203,11 @@ export function AuditReport({ audit }: AuditReportProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(getGroupedResults()).length > 0 ? Object.entries(getGroupedResults()).map(([productId, results]) => (
-                    <TableRow key={productId}>
-                      <TableCell className="font-medium">{productId}</TableCell>
-                      {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => {
+                  {Object.entries(getGroupedResults()).length > 0 ? (
+                    Object.entries(getGroupedResults()).map(([productId, results]) => (
+                      <TableRow key={productId}>
+                        <TableCell className="font-medium">{productId}</TableCell>
+                        {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => {
                         const result = results.find(r => r.rule?.name === ruleName);
                         return (
                           <TableCell key={ruleName} className="text-center">
