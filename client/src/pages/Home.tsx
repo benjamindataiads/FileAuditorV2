@@ -157,6 +157,25 @@ export function Home() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              <div className="flex items-center space-x-2 pb-4 border-b">
+                <Checkbox
+                  id="select-all"
+                  checked={rules?.length === selectedRules.length}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedRules(rules?.map(rule => rule.id) || []);
+                    } else {
+                      setSelectedRules([]);
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="select-all"
+                  className="text-sm font-medium leading-none"
+                >
+                  Select All Rules
+                </label>
+              </div>
               {rules?.map((rule) => (
                 <div key={rule.id} className="flex items-center space-x-2">
                   <Checkbox
