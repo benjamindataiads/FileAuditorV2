@@ -42,8 +42,8 @@ import type { Rule } from "@/lib/types";
 export function RuleLibrary() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { data: rules, isLoading } = useQuery<Rule[]>({
-    queryKey: ["/api/rules"],
+  const { data: rules = [] } = useQuery<Rule[]>({
+    queryKey: ["/api/rule-library"],
   });
 
   const deleteMutation = useMutation({

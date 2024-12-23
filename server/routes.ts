@@ -45,7 +45,7 @@ async function validateProduct(product: any, selectedRules: any[], columnMapping
 
 export function registerRoutes(app: Express): Server {
   // Get all rules
-  app.get("/api/rules", async (_req, res) => {
+  app.get("/api/rule-library", async (_req, res) => {
     try {
       const allRules = await db.query.rules.findMany();
       res.json(allRules);
