@@ -36,7 +36,7 @@ export function RuleLibrary() {
                 size="sm"
                 onClick={() => {
                   window.localStorage.setItem('editRule', JSON.stringify(rule));
-                  setLocation(`/rule-edit/${rule.id}`);
+                  setLocation('/rule-edit');
                 }}
               >
                 Edit
