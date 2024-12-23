@@ -213,23 +213,30 @@ export function AuditReport({ audit }: AuditReportProps) {
             <div className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={Array.from(audit.results.reduce((acc, result) => {
+                  data={audit.results.reduce((acc, result) => {
                     const ruleName = result.rule?.name || 'Unknown';
-                    if (!acc.has(ruleName)) {
-                      acc.set(ruleName, { rule: ruleName, ok: 0, warning: 0, critical: 0, total: 0 });
+                    const existing = acc.find(item => item.rule === ruleName);
+                    if (!existing) {
+                      acc.push({
+                        rule: ruleName,
+                        ok: result.status === 'ok' ? 1 : 0,
+                        warning: result.status === 'warning' ? 1 : 0,
+                        critical: result.status === 'critical' ? 1 : 0,
+                        total: 1
+                      });
+                    } else {
+                      existing[result.status] += 1;
+                      existing.total += 1;
                     }
-                    const stats = acc.get(ruleName)!;
-                    stats[result.status] += 1;
-                    stats.total += 1;
                     return acc;
-                  }, new Map())).map(([_, item]) => ({
+                  }, [] as any[]).map(item => ({
                     rule: item.rule,
-                    ok: (item.ok / audit.totalProducts) * 100,
-                    warning: (item.warning / audit.totalProducts) * 100,
-                    critical: (item.critical / audit.totalProducts) * 100
+                    ok: (item.ok / item.total) * 100,
+                    warning: (item.warning / item.total) * 100,
+                    critical: (item.critical / item.total) * 100
                   }))}
-                  layout="horizontal"
-                  margin={{ top: 20, right: 30, left: 150, bottom: 40 }}
+                  layout="vertical"
+                  margin={{ top: 20, right: 30, left: 150, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" unit="%" domain={[0, 100]} />
