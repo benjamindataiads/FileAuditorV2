@@ -373,6 +373,15 @@ app.put("/api/rules/:id", async (req, res) => {
 
     const { name, description, category, condition, criticality } = req.body;
     
+    // Check if rule exists first
+    const existingRule = await db.query.rules.findFirst({
+      where: eq(rules.id, id)
+    });
+
+    if (!existingRule) {
+      return res.status(404).json({ message: "Rule not found" });
+    }
+    
     // Validation checks as in POST endpoint
     if (!name || !description || !category || !criticality) {
       return res.status(400).json({ 
@@ -390,10 +399,6 @@ app.put("/api/rules/:id", async (req, res) => {
       })
       .where(eq(rules.id, id))
       .returning();
-
-    if (!updatedRule.length) {
-      return res.status(404).json({ message: "Rule not found" });
-    }
 
     res.json(updatedRule[0]);
   } catch (error) {
