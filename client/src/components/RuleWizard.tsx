@@ -120,12 +120,13 @@ const formSchema = z.object({
 interface RuleWizardProps {
   onSubmit: (values: Omit<Rule, "id" | "createdAt">) => void;
   isSubmitting?: boolean;
+  initialValues?: Rule;
 }
 
 export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: initialValues || {
       name: "",
       description: "",
       category: "",

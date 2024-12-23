@@ -5,6 +5,7 @@ import { RuleLibrary } from "@/pages/RuleLibrary";
 import { CreateRule } from "@/pages/CreateRule";
 import { AuditResults } from "@/pages/AuditResults";
 import { AuditHistory } from "@/pages/AuditHistory";
+import { EditRule } from "@/pages/EditRule"; // Added import
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/create-rule" component={CreateRule} />
           <Route path="/audit/:id" component={AuditResults} />
           <Route path="/audits" component={AuditHistory} />
+          <Route path="/edit-rule" component={EditRule} /> {/* Added route */}
           <Route>404 Not Found</Route>
         </Switch>
       </main>

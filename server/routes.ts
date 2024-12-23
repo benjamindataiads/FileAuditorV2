@@ -364,6 +364,44 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+app.put("/api/rules/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid rule ID" });
+    }
+
+    const { name, description, category, condition, criticality } = req.body;
+    
+    // Validation checks as in POST endpoint
+    if (!name || !description || !category || !criticality) {
+      return res.status(400).json({ 
+        message: "Missing required fields"
+      });
+    }
+
+    const updatedRule = await db.update(rules)
+      .set({
+        name,
+        description,
+        category,
+        condition,
+        criticality,
+      })
+      .where(eq(rules.id, id))
+      .returning();
+
+    if (!updatedRule.length) {
+      return res.status(404).json({ message: "Rule not found" });
+    }
+
+    res.json(updatedRule[0]);
+  } catch (error) {
+    console.error('Error updating rule:', error);
+    res.status(500).json({ message: "Failed to update rule" });
+  }
+});
+
 app.delete("/api/rules/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
