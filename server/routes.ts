@@ -504,16 +504,27 @@ export function registerRoutes(app: Express): Server {
 }
 
 async function loadRules(ruleIds: number[]): Promise<any[]> {
-  return db.query.rules.findMany({
+  const loadedRules = await db.query.rules.findMany({
     where: (rules, { inArray }) => inArray(rules.id, ruleIds)
   });
+  return loadedRules.filter(rule => rule && rule.id);
 }
 
 async function insertResultsBatch(results: any[], auditId: number): Promise<void> {
-    const resultsWithAuditId = results.map(result => ({
+    const validResults = results.filter(result => 
+      result && 
+      result.ruleId && 
+      result.productId && 
+      result.status
+    );
+    
+    if (validResults.length === 0) return;
+    
+    const resultsWithAuditId = validResults.map(result => ({
         ...result,
         auditId: auditId
     }));
+    
     await db.insert(auditResults).values(resultsWithAuditId);
 }
 
