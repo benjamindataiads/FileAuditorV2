@@ -17,6 +17,9 @@ export function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [selectedRules, setSelectedRules] = useState<number[]>([]);
 const [selectedCategory, setSelectedCategory] = useState<string>("all");
+const { data: rules } = useQuery<Rule[]>({
+  queryKey: ["/api/rules"],
+});
 
 const filteredRules = useMemo(() => {
   if (!rules) return [];
