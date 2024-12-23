@@ -347,7 +347,24 @@ export function registerRoutes(app: Express): Server {
 
     res.json({ auditId });
   });
-  app.delete("/api/rules/:id", async (req, res) => {
+  app.delete("/api/audits/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid audit ID" });
+      }
+
+      await db.delete(auditResults).where(eq(auditResults.auditId, id));
+      await db.delete(audits).where(eq(audits.id, id));
+
+      res.json({ message: "Audit deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting audit:', error);
+      res.status(500).json({ message: "Failed to delete audit" });
+    }
+  });
+
+app.delete("/api/rules/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {

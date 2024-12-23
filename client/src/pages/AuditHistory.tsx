@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   Card,
@@ -16,13 +17,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, Trash2 } from "lucide-react";
 import type { Audit } from "@/lib/types";
+import { useToast } from "@/components/ui/use-toast";
 
 export function AuditHistory() {
   const { data: audits, isLoading } = useQuery<Audit[]>({
     queryKey: ["/api/audits"],
   });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this audit?")) return;
+
+    try {
+      const response = await fetch(`/api/audits/${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete audit');
+      
+      queryClient.invalidateQueries(["/api/audits"]);
+      toast({
+        title: "Success",
+        description: "Audit deleted successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete audit",
+        variant: "destructive"
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -92,6 +120,13 @@ export function AuditHistory() {
                             <path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.9 3.2L22 9M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.9-3.2L2 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                           Run Again
+                        </button>
+                        <button
+                          onClick={() => handleDelete(audit.id)}
+                          className="inline-flex items-center text-sm text-red-500 hover:underline"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
                         </button>
                       </div>
                     </TableCell>
