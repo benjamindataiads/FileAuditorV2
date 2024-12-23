@@ -1,29 +1,12 @@
-import { Switch, Route } from "wouter";
-import { Navigation } from "@/components/Navigation";
-import { Home } from "@/pages/Home";
-import { RuleLibrary } from "@/pages/RuleLibrary";
-import { CreateRule } from "@/pages/CreateRule";
-import { AuditResults } from "@/pages/AuditResults";
-import { AuditHistory } from "@/pages/AuditHistory";
-import { EditRule } from "@/pages/EditRule"; // Added import
 
-function App() {
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="container mx-auto py-6">
-        <Switch>
-          <Route path="/" component={Home} />
+<old_str>
           <Route path="/rule-library" component={RuleLibrary} />
           <Route path="/create-rule" component={CreateRule} />
           <Route path="/audit/:id" component={AuditResults} />
-          <Route path="/audits" component={AuditHistory} />
-          <Route path="/edit-rule" component={EditRule} /> {/* Added route */}
-          <Route>404 Not Found</Route>
-        </Switch>
-      </main>
-    </div>
-  );
-}
-
-export default App;
+</old_str>
+<new_str>
+          <Route path="/rule-library" component={RuleLibrary} />
+          <Route path="/create-rule" component={CreateRule} />
+          <Route path="/rule-edit" component={EditRule} />
+          <Route path="/audit/:id" component={AuditResults} />
+</new_str>

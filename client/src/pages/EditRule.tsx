@@ -30,7 +30,7 @@ export function EditRule() {
       const response = await fetch(`/api/rules/${rule.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, id: rule.id }),
       });
       
       if (!response.ok) {
@@ -42,7 +42,7 @@ export function EditRule() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Rule updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/rules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rule-library"] });
       setLocation('/rule-library');
     },
     onError: (error: Error) => {
