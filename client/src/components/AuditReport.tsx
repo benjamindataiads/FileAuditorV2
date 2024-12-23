@@ -54,7 +54,9 @@ export function AuditReport({ audit }: AuditReportProps) {
 
   const getGroupedResults = () => {
     const results = audit.results || [];
-    return results.reduce((acc, result) => {
+    console.log("Raw results:", results);
+    const grouped = results.reduce((acc, result) => {
+      if (!result.productId) return acc;
       const key = result.productId;
       if (!acc[key]) {
         acc[key] = [];
@@ -62,6 +64,8 @@ export function AuditReport({ audit }: AuditReportProps) {
       acc[key].push(result);
       return acc;
     }, {} as Record<string, Array<(typeof results)[number]>>);
+    console.log("Grouped results:", grouped);
+    return grouped;
   };
 
   const handleExport = () => {
@@ -203,7 +207,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(getGroupedResults()).length > 0 ? (
+                  {audit.results && audit.results.length > 0 ? (
                     Object.entries(getGroupedResults()).map(([productId, results]) => (
                       <TableRow key={productId}>
                         <TableCell className="font-medium">{productId}</TableCell>
