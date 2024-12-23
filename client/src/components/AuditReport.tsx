@@ -195,7 +195,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Product ID</TableHead>
-                    {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => (
+                    {Array.from(new Set((audit.results || []).map(r => r.rule?.name))).map((ruleName) => (
                       <TableHead key={ruleName} className="text-center font-bold">
                         {ruleName}
                       </TableHead>
@@ -203,7 +203,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(getGroupedResults()).map(([productId, results]) => (
+                  {Object.entries(getGroupedResults()).length > 0 ? Object.entries(getGroupedResults()).map(([productId, results]) => (
                     <TableRow key={productId}>
                       <TableCell className="font-medium">{productId}</TableCell>
                       {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => {
@@ -252,7 +252,13 @@ export function AuditReport({ audit }: AuditReportProps) {
                         );
                       })}
                     </TableRow>
-                  ))}
+                  ))) : (
+                    <TableRow>
+                      <TableCell colSpan={Object.keys(getGroupedResults()).length + 1} className="text-center">
+                        No results found
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>

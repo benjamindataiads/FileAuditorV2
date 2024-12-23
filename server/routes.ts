@@ -405,7 +405,8 @@ export function registerRoutes(app: Express): Server {
         results: {
           with: {
             rule: true
-          }
+          },
+          orderBy: (results, { asc }) => [asc(results.productId)]
         }
       }
     });
