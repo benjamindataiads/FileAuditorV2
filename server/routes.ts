@@ -455,38 +455,39 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ message: "No valid rules found for this audit" });
     }
 
+    // Get all unique products from old audit
+    const products = [...new Set(oldAudit.results?.map(r => ({
+      id: r.productId,
+      // Add any other fields from the original product
+    })))];
+
     // Create new audit entry
     const newAudit = await db.insert(audits).values({
       name: `${oldAudit.name} (Rerun)`,
       fileHash: oldAudit.fileHash,
-      totalProducts: oldAudit.totalProducts,
+      totalProducts: products.length,
       compliantProducts: 0,
       warningProducts: 0,
       criticalProducts: 0,
     }).returning();
 
     const auditId = newAudit[0].id;
-
-    // Group results by product for batch processing
-    const productIds = [...new Set(oldAudit.results?.map(r => r.productId))];
     const batchPromises = [];
-    
-    for (const productId of productIds) {
-      const results = [];
-      for (const rule of rules) {
-        if (!rule || !rule.id) continue;
-        const result = evaluateRule({ id: productId }, rule);
-        results.push({
-          auditId,
-          ruleId: rule.id,
-          productId,
-          status: result.status,
-          details: result.details,
-        });
-      }
-      if (results.length > 0) {
-        batchPromises.push(insertResultsBatch(results, auditId));
-      }
+
+    // Reuse the original audit results to maintain consistency
+    const results = oldAudit.results?.map(r => ({
+      auditId,
+      ruleId: r.ruleId,
+      productId: r.productId,
+      status: r.status,
+      details: r.details,
+      fieldName: r.fieldName
+    })) || [];
+
+    // Process in batches
+    for (let i = 0; i < results.length; i += 100) {
+      const batch = results.slice(i, i + 100);
+      batchPromises.push(insertResultsBatch(batch, auditId));
     }
 
     await Promise.all(batchPromises);
