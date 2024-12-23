@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db } from "@db";
+import { seedDefaultRules } from "@db/defaultRules";
 
 const app = express();
 app.use(express.json());
@@ -56,6 +58,9 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // Seed default rules on server start
+  seedDefaultRules(db);
 
   // Use environment variable for port, default to 3000
   const PORT = process.env.PORT || 3003;
