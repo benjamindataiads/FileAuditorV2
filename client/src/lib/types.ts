@@ -9,7 +9,7 @@ export interface Rule {
 }
 
 export interface RuleCondition {
-  type: "notEmpty" | "minLength" | "contains" | "regex" | "range" | "crossField" | "date";
+  type: "notEmpty" | "minLength" | "maxLength" | "contains" | "regex" | "range" | "crossField" | "date";
   field: string;
   value?: any;
   caseSensitive?: boolean;

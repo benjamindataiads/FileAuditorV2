@@ -224,6 +224,7 @@ export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
                 <SelectContent>
                   <SelectItem value="notEmpty">Must not be empty</SelectItem>
                   <SelectItem value="minLength">Minimum length</SelectItem>
+                  <SelectItem value="maxLength">Maximum length</SelectItem>
                   <SelectItem value="contains">Contains value</SelectItem>
                   <SelectItem value="regex">Matches pattern</SelectItem>
                   <SelectItem value="range">Numerical range</SelectItem>

@@ -649,6 +649,13 @@ function evaluateRule(product: any, rule: any) {
           }
           break;
 
+        case "maxLength":
+          if (fieldValue.length > condition.value) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' has ${fieldValue.length} characters (maximum allowed: ${condition.value})`;
+          }
+          break;
+
         case "contains":
           const searchValue = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
           const testValue = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
