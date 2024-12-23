@@ -296,28 +296,32 @@ export function registerRoutes(app: Express): Server {
     const batchPromises = [];
     
     // Process products in chunks to avoid memory issues
-    const BATCH_SIZE = 100; // Adjust batch size as needed
+    const BATCH_SIZE = 50; // Reduced batch size for better reliability
     const productChunks = [];
     for (let i = 0; i < products.length; i += BATCH_SIZE) {
       productChunks.push(products.slice(i, i + BATCH_SIZE));
     }
 
+    console.log(`Processing ${products.length} products with ${rules.length} rules`);
+    
     for (const chunk of productChunks) {
       const chunkPromises = chunk.map(async (product) => {
         const results = await validateProduct(product, rules, columnMapping);
         return results.map(result => ({
           ...result,
-          ruleId: rules.find(r => r.condition.field === result.fieldName)?.id,
+          ruleId: rules.find(r => 
+            r.condition.field === result.fieldName && 
+            r.id
+          )?.id,
         }));
       });
-      const chunkResults = await Promise.all(chunkPromises);
-      const flatResults = chunkResults.flat().filter(r => r.ruleId); // Filter out results without ruleId
-      allResults.push(...flatResults);
       
-      // Batch insert results
-      if (allResults.length >= BATCH_SIZE) {
-        const batch = allResults.splice(0, BATCH_SIZE);
-        batchPromises.push(insertResultsBatch(batch, auditId));
+      const chunkResults = await Promise.all(chunkPromises);
+      const flatResults = chunkResults.flat().filter(r => r.ruleId);
+      
+      // Insert results immediately for each chunk
+      if (flatResults.length > 0) {
+        await insertResultsBatch(flatResults, auditId);
       }
     }
 
