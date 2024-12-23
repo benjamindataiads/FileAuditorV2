@@ -123,10 +123,10 @@ interface RuleWizardProps {
   initialValues?: Rule;
 }
 
-export function RuleWizard({ onSubmit, isSubmitting }: RuleWizardProps) {
+export function RuleWizard({ onSubmit, isSubmitting, initialValues }: RuleWizardProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialValues || {
+    defaultValues: initialValues ?? {
       name: "",
       description: "",
       category: "",
