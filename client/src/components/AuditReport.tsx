@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, CheckCircle2, MinusCircle, AlertCircle } from "lucide-react";
+import { Download, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -226,13 +226,13 @@ export function AuditReport({ audit }: AuditReportProps) {
                                         }
                                       >
                                         {result.status === "ok" && (
-                                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                                          <CheckCircle className="h-4 w-4 mr-1" />
                                         )}
                                         {result.status === "warning" && (
-                                          <MinusCircle className="h-4 w-4 mr-1" />
+                                          <AlertTriangle className="h-4 w-4 mr-1" />
                                         )}
                                         {result.status === "critical" && (
-                                          <AlertCircle className="h-4 w-4 mr-1" />
+                                          <XCircle className="h-4 w-4 mr-1" />
                                         )}
                                         {result.status}
                                       </Badge>
