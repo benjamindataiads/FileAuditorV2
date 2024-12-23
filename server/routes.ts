@@ -703,22 +703,31 @@ function evaluateRule(product: any, rule: any) {
           break;
 
         case "crossField":
-          const { field: compareFieldName, operator } = condition.value;
-          const compareFieldValue = getFieldValue(compareFieldName);
-          
-          if (!compareValues(fieldValue, compareFieldValue, operator)) {
-            const operatorMap = {
-              "==": "equal to",
-              "!=": "not equal to",
-              ">": "greater than",
-              ">=": "greater than or equal to",
-              "<": "less than",
-              "<=": "less than or equal to"
-            } as const;
+          try {
+            const crossFieldConfig = typeof condition.value === 'string' ? 
+              JSON.parse(condition.value) : condition.value;
+            const { field: compareFieldName, operator } = crossFieldConfig;
+            const compareFieldValue = getFieldValue(compareFieldName);
+            
+            if (!compareValues(fieldValue, compareFieldValue, operator)) {
+              const operatorMap = {
+                "==": "equal to",
+                "!=": "not equal to",
+                ">": "greater than",
+                ">=": "greater than or equal to",
+                "<": "less than",
+                "<=": "less than or equal to",
+                "contains": "containing"
+              } as const;
 
-            const operatorText = operatorMap[operator as keyof typeof operatorMap];
-            status = rule.criticality;
-            details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
+              const operatorText = operatorMap[operator as keyof typeof operatorMap];
+              status = rule.criticality;
+              details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
+            }
+          } catch (error) {
+            console.error('Cross-field validation error:', error);
+            status = "warning";
+            details = `Error validating cross-field rule: ${error instanceof Error ? error.message : 'Unknown error'}`;
           }
           break;
       }
