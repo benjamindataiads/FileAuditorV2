@@ -124,6 +124,21 @@ export function RulePreview({ rule }: RulePreviewProps) {
               : `Field does not contain '${rule.condition.value}'`,
           };
 
+        case "doesntContain":
+          const searchValue2 = rule.condition.caseSensitive 
+            ? rule.condition.value 
+            : rule.condition.value?.toLowerCase();
+          const testValue2 = rule.condition.caseSensitive 
+            ? fieldValue 
+            : fieldValue?.toLowerCase();
+          
+          return {
+            status: !testValue2?.includes(searchValue2) ? "ok" : rule.criticality,
+            message: !testValue2?.includes(searchValue2)
+              ? `Field does not contain '${rule.condition.value}'`
+              : `Field contains '${rule.condition.value}' (forbidden value)`,
+          };
+
         case "regex":
           try {
             const regex = new RegExp(rule.condition.value || "", rule.condition.caseSensitive ? '' : 'i');
