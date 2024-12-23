@@ -79,10 +79,10 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Validate condition type
-      if (!["notEmpty", "minLength", "contains", "regex", "range", "crossField", "date"].includes(condition.type)) {
+      if (!["notEmpty", "minLength", "maxLength", "contains", "regex", "range", "crossField", "date"].includes(condition.type)) {
         return res.status(400).json({ 
           message: "Invalid condition type",
-          details: "Condition type must be one of: notEmpty, minLength, contains, regex, range, crossField, date"
+          details: "Condition type must be one of: notEmpty, minLength, maxLength, contains, regex, range, crossField, date"
         });
       }
 
