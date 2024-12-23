@@ -49,17 +49,11 @@ export function AuditReport({ audit }: AuditReportProps) {
   ];
 
   const calculateComplianceScore = () => {
-    const total = audit.totalProducts * audit.results.length / 3; // Total possible points
+    const total = audit.totalProducts;
     if (total === 0) return 0;
-    
-    const points = audit.results.reduce((acc, result) => {
-      if (result.status === 'ok') return acc + 1;
-      if (result.status === 'warning') return acc - 0.5;
-      if (result.status === 'critical') return acc - 1;
-      return acc;
-    }, 0);
-    
-    const score = Math.max(0, Math.min(100, (points / total) * 100));
+
+    const score =
+      ((audit.compliantProducts + audit.warningProducts * 0.5) / total) * 100;
     return Math.round(score);
   };
 
