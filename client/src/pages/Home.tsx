@@ -16,24 +16,20 @@ type Step = "upload" | "mapping" | "rules" | "processing";
 export function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [selectedRules, setSelectedRules] = useState<number[]>([]);
-const [selectedCategory, setSelectedCategory] = useState<string>("all");
-const { data: rules } = useQuery<Rule[]>({
-  queryKey: ["/api/rules"],
-});
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const { data: rules } = useQuery<Rule[]>({
+    queryKey: ["/api/rules"],
+  });
 
-const filteredRules = useMemo(() => {
-  if (!rules) return [];
-  if (selectedCategory === "all") return rules;
-  return rules.filter(rule => rule.category === selectedCategory);
-}, [rules, selectedCategory]);
+  const filteredRules = useMemo(() => {
+    if (!rules) return [];
+    if (selectedCategory === "all") return rules;
+    return rules.filter(rule => rule.category === selectedCategory);
+  }, [rules, selectedCategory]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [auditName, setAuditName] = useState("");
   const [, setLocation] = useLocation();
-
-  const { data: rules } = useQuery<Rule[]>({
-    queryKey: ["/api/rules"],
-  });
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
