@@ -54,12 +54,12 @@ export function AuditHistory() {
               {audits?.map((audit) => {
                 const complianceScore = Math.round(
                   Math.max(0, Math.min(100, 
-                    ((audit.results?.reduce((acc, result) => {
+                    (audit.results.reduce((acc, result) => {
                       if (result.status === 'ok') return acc + 1;
                       if (result.status === 'warning') return acc - 0.5;
                       if (result.status === 'critical') return acc - 1;
                       return acc;
-                    }, 0) || 0) / (audit.totalProducts * (audit.results?.length || 1) / 3)) * 100
+                    }, 0) / (audit.totalProducts * audit.results.length / 3)) * 100
                   ))
                 );
 
