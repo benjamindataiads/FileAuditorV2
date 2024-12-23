@@ -422,7 +422,9 @@ export function registerRoutes(app: Express): Server {
 }
 
 async function loadRules(ruleIds: number[]): Promise<any[]> {
-  return db.query.rules.findMany({ where: eq(rules.id, ruleIds) });
+  return db.query.rules.findMany({
+    where: (rules, { inArray }) => inArray(rules.id, ruleIds)
+  });
 }
 
 async function insertResultsBatch(results: any[], auditId: number): Promise<void> {
