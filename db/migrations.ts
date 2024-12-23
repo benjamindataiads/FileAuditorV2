@@ -1,9 +1,15 @@
 
 import { db } from "./index";
 import { rules, audits, auditResults } from "./schema";
+import { seedDefaultRules } from "./defaultRules";
 
 async function createTables() {
   try {
+    // Drop existing tables in correct order
+    await db.execute(`DROP TABLE IF EXISTS audit_results CASCADE`);
+    await db.execute(`DROP TABLE IF EXISTS audits CASCADE`);
+    await db.execute(`DROP TABLE IF EXISTS rules CASCADE`);
+
     // Create rules table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS rules (
@@ -45,10 +51,12 @@ async function createTables() {
       );
     `);
 
-    console.log('Database tables created successfully');
+    // Seed default rules
+    await seedDefaultRules(db);
+    
+    console.log('Database tables reset and default rules seeded successfully');
   } catch (error) {
-    console.error('Error creating tables:', error);
-    throw error;
+    console.error('Error resetting database:', error);
   }
 }
 
