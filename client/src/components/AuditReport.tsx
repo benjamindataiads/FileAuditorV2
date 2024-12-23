@@ -53,7 +53,12 @@ export function AuditReport({ audit }: AuditReportProps) {
   };
 
   const getGroupedResults = () => {
-    console.log("Processing audit results:", audit);
+    console.log("Processing audit results:", {
+      auditId: audit.id,
+      totalProducts: audit.totalProducts,
+      results: audit.results,
+      resultsLength: audit?.results?.length || 0
+    });
     if (!audit?.results?.length) {
       console.log("No results found in audit");
       return {};

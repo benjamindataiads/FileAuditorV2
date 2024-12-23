@@ -317,6 +317,12 @@ export function registerRoutes(app: Express): Server {
     const results = await db.query.auditResults.findMany({
       where: eq(auditResults.auditId, auditId)
     });
+    
+    console.log('Audit results after processing:', {
+      auditId,
+      totalResults: results.length,
+      results: results.slice(0, 5) // Log first 5 results for debugging
+    });
 
     const counts = {
       compliant: results.filter(r => r.status === "ok").length,
@@ -481,6 +487,12 @@ export function registerRoutes(app: Express): Server {
     // Update audit counts
     const results = await db.query.auditResults.findMany({
       where: eq(auditResults.auditId, auditId)
+    });
+    
+    console.log('Audit results after processing:', {
+      auditId,
+      totalResults: results.length,
+      results: results.slice(0, 5) // Log first 5 results for debugging
     });
 
     const counts = {
