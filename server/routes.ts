@@ -13,7 +13,7 @@ import crypto from "crypto";
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Helper function to validate a single product
-async function validateProduct(product: any, selectedRuleIds: number[], columnMapping: Record<string, string>) {
+async function validateProduct(product: any, selectedRules: any[], columnMapping: Record<string, string>) {
   const results = [];
   
   // Create a mapped product with our field names
@@ -22,23 +22,13 @@ async function validateProduct(product: any, selectedRuleIds: number[], columnMa
     mappedProduct[appField] = product[fileColumn];
   });
   
-  for (const ruleId of selectedRuleIds) {
-    const rule = await db.query.rules.findFirst({
-      where: eq(rules.id, ruleId)
-    });
-
-    if (!rule) continue;
-
+  for (const rule of selectedRules) {
     const result = evaluateRule(mappedProduct, rule);
     // Find the file column that maps to 'identifiant'
     const idColumn = Object.entries(columnMapping)
       .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
       // Direct field access if it exists in the product
       (product.identifiant ? 'identifiant' : null);
-    
-    console.log('Validation - Column Mapping:', columnMapping);
-    console.log('Validation - ID Column:', idColumn);
-    console.log('Validation - Product:', product);
     
     const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
     
@@ -287,52 +277,41 @@ export function registerRoutes(app: Express): Server {
     }).returning();
 
     const auditId = audit[0].id;
-
-    // Execute rules and store results
     const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
     
-    console.log('Column Mapping:', columnMapping);
+    // Load all rules at once
+    const rules = await loadRules(selectedRules);
     
-    for (const product of products) {
-      // Create a mapped product with our field names
-      const mappedProduct: Record<string, any> = {};
-      Object.entries(columnMapping).forEach(([fileColumn, appField]) => {
-        if (fileColumn && appField) {
-          mappedProduct[appField] = product[fileColumn];
-        }
-      });
+    // Process products in parallel with batched DB operations
+    const allResults = [];
+    const batchPromises = [];
+    
+    // Process products in chunks to avoid memory issues
+    const BATCH_SIZE = 100; // Adjust batch size as needed
+    const productChunks = [];
+    for (let i = 0; i < products.length; i += BATCH_SIZE) {
+      productChunks.push(products.slice(i, i + BATCH_SIZE));
+    }
 
-      // Find the file column that maps to 'identifiant'
-      const idColumn = Object.entries(columnMapping)
-        .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
-        // Direct field access if it exists in the product
-        (product.identifiant ? 'identifiant' : null);
+    for (const chunk of productChunks) {
+      const chunkPromises = chunk.map(product => validateProduct(product, rules, columnMapping));
+      const chunkResults = await Promise.all(chunkPromises);
+      allResults.push(...chunkResults.flat());
       
-      console.log('Column Mapping:', columnMapping);
-      console.log('ID Column:', idColumn);
-      console.log('Product:', product);
-      console.log('Mapped Product:', mappedProduct);
-      
-      const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
-
-      for (const ruleId of selectedRules) {
-        const rule = await db.query.rules.findFirst({
-          where: eq(rules.id, ruleId)
-        });
-
-        if (!rule) continue;
-
-        const result = evaluateRule(mappedProduct, rule);
-        
-        await db.insert(auditResults).values({
-          auditId,
-          ruleId,
-          productId,
-          status: result.status,
-          details: result.details,
-        });
+      // Batch insert results
+      if (allResults.length >= BATCH_SIZE) {
+        const batch = allResults.splice(0, BATCH_SIZE);
+        batchPromises.push(insertResultsBatch(batch, auditId));
       }
     }
+
+    // Insert any remaining results
+    if (allResults.length > 0) {
+      batchPromises.push(insertResultsBatch(allResults, auditId));
+    }
+
+    // Wait for all batch inserts to complete
+    await Promise.all(batchPromises);
 
     // Update audit counts
     const results = await db.query.auditResults.findMany({
@@ -441,6 +420,15 @@ export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+async function loadRules(ruleIds: number[]): Promise<any[]> {
+  return db.query.rules.findMany({ where: eq(rules.id, ruleIds) });
+}
+
+async function insertResultsBatch(results: any[], auditId: number): Promise<void> {
+    await db.insert(auditResults).values(results);
+}
+
 
 function evaluateRule(product: any, rule: any) {
   const condition = rule.condition;
