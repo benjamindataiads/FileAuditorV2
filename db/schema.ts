@@ -37,15 +37,13 @@ export const audits = pgTable("audits", {
 });
 
 // Audit results table to store detailed results
-export const auditResults = pgTable('audit_results', {
-  id: serial('id').primaryKey(),
-  auditId: integer('audit_id').references(() => audits.id, { onDelete: 'cascade' }),
-  ruleId: integer('rule_id').references(() => rules.id),
-  productId: varchar('product_id').notNull(),
-  status: varchar('status', { enum: ['ok', 'warning', 'critical'] }).notNull(),
-  details: varchar('details'),
-  fieldName: varchar('field_name'),
-  createdAt: timestamp('created_at').defaultNow()
+export const auditResults = pgTable("audit_results", {
+  id: serial("id").primaryKey(),
+  auditId: integer("audit_id").references(() => audits.id, { onDelete: 'cascade' }).notNull(),
+  ruleId: integer("rule_id").references(() => rules.id, { onDelete: "cascade" }).notNull(),
+  productId: text("product_id").notNull(),
+  status: text("status").notNull(),
+  details: text("details"),
 });
 
 // Relations
