@@ -417,6 +417,81 @@ export function registerRoutes(app: Express): Server {
     res.json(audit);
   });
 
+  app.post("/api/audits/:id/rerun", async (req, res) => {
+    const oldAudit = await db.query.audits.findFirst({
+      where: eq(audits.id, parseInt(req.params.id)),
+      with: {
+        results: {
+          with: {
+            rule: true
+          }
+        }
+      }
+    });
+
+    if (!oldAudit) {
+      return res.status(404).json({ message: "Audit not found" });
+    }
+
+    // Create new audit with same rules
+    const ruleIds = [...new Set(oldAudit.results?.map(r => r.ruleId))];
+    const rules = await loadRules(ruleIds);
+    
+    // Create new audit entry
+    const newAudit = await db.insert(audits).values({
+      name: `${oldAudit.name} (Rerun)`,
+      fileHash: oldAudit.fileHash,
+      totalProducts: oldAudit.totalProducts,
+      compliantProducts: 0,
+      warningProducts: 0,
+      criticalProducts: 0,
+    }).returning();
+
+    const auditId = newAudit[0].id;
+
+    // Group results by product for batch processing
+    const productIds = [...new Set(oldAudit.results?.map(r => r.productId))];
+    const batchPromises = [];
+    
+    for (const productId of productIds) {
+      const results = [];
+      for (const rule of rules) {
+        const result = evaluateRule({ id: productId }, rule);
+        results.push({
+          auditId,
+          ruleId: rule.id,
+          productId,
+          status: result.status,
+          details: result.details,
+        });
+      }
+      batchPromises.push(insertResultsBatch(results, auditId));
+    }
+
+    await Promise.all(batchPromises);
+
+    // Update audit counts
+    const results = await db.query.auditResults.findMany({
+      where: eq(auditResults.auditId, auditId)
+    });
+
+    const counts = {
+      compliant: results.filter(r => r.status === "ok").length,
+      warning: results.filter(r => r.status === "warning").length,
+      critical: results.filter(r => r.status === "critical").length,
+    };
+
+    await db.update(audits)
+      .set({
+        compliantProducts: counts.compliant,
+        warningProducts: counts.warning,
+        criticalProducts: counts.critical,
+      })
+      .where(eq(audits.id, auditId));
+
+    res.json({ auditId });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

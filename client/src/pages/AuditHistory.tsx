@@ -67,13 +67,33 @@ export function AuditHistory() {
                       {format(new Date(audit.createdAt), "PPp")}
                     </TableCell>
                     <TableCell>
-                      <Link 
-                        href={`/audit/${audit.id}`}
-                        className="inline-flex items-center text-sm text-primary hover:underline"
-                      >
-                        <BarChart2 className="w-4 h-4 mr-1" />
-                        View Report
-                      </Link>
+                      <div className="flex gap-4">
+                        <Link 
+                          href={`/audit/${audit.id}`}
+                          className="inline-flex items-center text-sm text-primary hover:underline"
+                        >
+                          <BarChart2 className="w-4 h-4 mr-1" />
+                          View Report
+                        </Link>
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            const response = await fetch(`/api/audits/${audit.id}/rerun`, {
+                              method: 'POST'
+                            });
+                            const data = await response.json();
+                            if (data.auditId) {
+                              window.location.href = `/audit/${data.auditId}`;
+                            }
+                          }}
+                          className="inline-flex items-center text-sm text-primary hover:underline"
+                        >
+                          <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.9 3.2L22 9M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.9-3.2L2 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Run Again
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
