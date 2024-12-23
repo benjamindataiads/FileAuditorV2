@@ -674,6 +674,15 @@ function evaluateRule(product: any, rule: any) {
           }
           break;
 
+        case "doesntContain":
+          const searchValue2 = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
+          const testValue2 = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
+          if (testValue2.includes(searchValue2)) {
+            status = rule.criticality;
+            details = `Field '${condition.field}' contains forbidden value '${condition.value}'`;
+          }
+          break;
+
         case "date":
           try {
             let parsedDate: Date;
