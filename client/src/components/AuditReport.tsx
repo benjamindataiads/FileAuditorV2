@@ -23,6 +23,11 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
   Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from "recharts";
 import {
   Tooltip,
@@ -197,6 +202,56 @@ export function AuditReport({ audit }: AuditReportProps) {
           </CardContent>
         </Card>
 
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Rule Status Distribution</CardTitle>
+            <CardDescription>
+              Status distribution for each rule (as % of total products)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={audit.results.reduce((acc, result) => {
+                    const ruleName = result.rule?.name || 'Unknown';
+                    const existing = acc.find(item => item.rule === ruleName);
+                    if (!existing) {
+                      acc.push({
+                        rule: ruleName,
+                        ok: result.status === 'ok' ? 1 : 0,
+                        warning: result.status === 'warning' ? 1 : 0,
+                        critical: result.status === 'critical' ? 1 : 0,
+                        total: 1
+                      });
+                    } else {
+                      existing[result.status] += 1;
+                      existing.total += 1;
+                    }
+                    return acc;
+                  }, [] as any[]).map(item => ({
+                    rule: item.rule,
+                    ok: (item.ok / item.total) * 100,
+                    warning: (item.warning / item.total) * 100,
+                    critical: (item.critical / item.total) * 100
+                  }))}
+                  layout="vertical"
+                  margin={{ top: 20, right: 30, left: 150, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" unit="%" domain={[0, 100]} />
+                  <YAxis type="category" dataKey="rule" width={140} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                  <Legend />
+                  <Bar dataKey="ok" stackId="stack" fill="#22c55e" name="Compliant" />
+                  <Bar dataKey="warning" stackId="stack" fill="#f59e0b" name="Warning" />
+                  <Bar dataKey="critical" stackId="stack" fill="#ef4444" name="Critical" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Detailed Results</CardTitle>
@@ -268,8 +323,8 @@ export function AuditReport({ audit }: AuditReportProps) {
                           </TableCell>
                         );
                       })}
-                    </TableRow>
-                  ))) : (
+                      </TableRow>
+                    ))) : (
                     <TableRow>
                       <TableCell colSpan={Object.keys(getGroupedResults()).length + 1} className="text-center">
                         No results found
