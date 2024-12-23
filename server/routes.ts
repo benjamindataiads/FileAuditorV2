@@ -321,20 +321,20 @@ export function registerRoutes(app: Express): Server {
     await Promise.all(batchPromises);
 
     // Update audit counts
-    const auditResults = await db.query.auditResults.findMany({
+    const results = await db.query.auditResults.findMany({
       where: eq(auditResults.auditId, auditId)
     });
     
     console.log('Audit results after processing:', {
       auditId,
-      totalResults: auditResults.length,
-      results: auditResults.slice(0, 5) // Log first 5 results for debugging
+      totalResults: results.length,
+      results: results.slice(0, 5) // Log first 5 results for debugging
     });
 
     const counts = {
-      compliant: auditResults.filter(r => r.status === "ok").length,
-      warning: auditResults.filter(r => r.status === "warning").length,
-      critical: auditResults.filter(r => r.status === "critical").length,
+      compliant: results.filter(r => r.status === "ok").length,
+      warning: results.filter(r => r.status === "warning").length,
+      critical: results.filter(r => r.status === "critical").length,
     };
 
     await db.update(audits)
@@ -498,20 +498,20 @@ export function registerRoutes(app: Express): Server {
     await Promise.all(batchPromises);
 
     // Update audit counts
-    const auditResults = await db.query.auditResults.findMany({
+    const results = await db.query.auditResults.findMany({
       where: eq(auditResults.auditId, auditId)
     });
     
     console.log('Audit results after processing:', {
       auditId,
-      totalResults: auditResults.length,
-      results: auditResults.slice(0, 5) // Log first 5 results for debugging
+      totalResults: results.length,
+      results: results.slice(0, 5) // Log first 5 results for debugging
     });
 
     const counts = {
-      compliant: auditResults.filter(r => r.status === "ok").length,
-      warning: auditResults.filter(r => r.status === "warning").length,
-      critical: auditResults.filter(r => r.status === "critical").length,
+      compliant: results.filter(r => r.status === "ok").length,
+      warning: results.filter(r => r.status === "warning").length,
+      critical: results.filter(r => r.status === "critical").length,
     };
 
     await db.update(audits)
