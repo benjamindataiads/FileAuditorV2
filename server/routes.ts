@@ -437,6 +437,10 @@ export function registerRoutes(app: Express): Server {
     const ruleIds = [...new Set(oldAudit.results?.map(r => r.ruleId))];
     const rules = await loadRules(ruleIds);
     
+    if (!rules.length) {
+      return res.status(400).json({ message: "No valid rules found for this audit" });
+    }
+
     // Create new audit entry
     const newAudit = await db.insert(audits).values({
       name: `${oldAudit.name} (Rerun)`,
@@ -456,6 +460,7 @@ export function registerRoutes(app: Express): Server {
     for (const productId of productIds) {
       const results = [];
       for (const rule of rules) {
+        if (!rule || !rule.id) continue;
         const result = evaluateRule({ id: productId }, rule);
         results.push({
           auditId,
@@ -465,7 +470,9 @@ export function registerRoutes(app: Express): Server {
           details: result.details,
         });
       }
-      batchPromises.push(insertResultsBatch(results, auditId));
+      if (results.length > 0) {
+        batchPromises.push(insertResultsBatch(results, auditId));
+      }
     }
 
     await Promise.all(batchPromises);
