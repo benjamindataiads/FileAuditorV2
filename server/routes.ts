@@ -294,9 +294,16 @@ export function registerRoutes(app: Express): Server {
     }
 
     for (const chunk of productChunks) {
-      const chunkPromises = chunk.map(product => validateProduct(product, rules, columnMapping));
+      const chunkPromises = chunk.map(async (product) => {
+        const results = await validateProduct(product, rules, columnMapping);
+        return results.map(result => ({
+          ...result,
+          ruleId: rules.find(r => r.condition.field === result.fieldName)?.id,
+        }));
+      });
       const chunkResults = await Promise.all(chunkPromises);
-      allResults.push(...chunkResults.flat());
+      const flatResults = chunkResults.flat().filter(r => r.ruleId); // Filter out results without ruleId
+      allResults.push(...flatResults);
       
       // Batch insert results
       if (allResults.length >= BATCH_SIZE) {
@@ -534,10 +541,14 @@ async function insertResultsBatch(results: any[], auditId: number): Promise<void
     if (validResults.length === 0) return;
     
     const resultsWithAuditId = validResults.map(result => ({
-        ...result,
-        auditId: auditId
+        auditId,
+        ruleId: result.ruleId,
+        productId: result.productId,
+        status: result.status,
+        details: result.details || null
     }));
     
+    console.log('Inserting batch results:', resultsWithAuditId);
     await db.insert(auditResults).values(resultsWithAuditId);
 }
 
