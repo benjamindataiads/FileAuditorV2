@@ -14,7 +14,7 @@ function App() {
       <main className="container mx-auto py-6">
         <Switch>
           <Route path="/" component={Home} />
-          <Route path="/rules" component={RuleLibrary} />
+          <Route path="/rule-library" component={RuleLibrary} />
           <Route path="/create-rule" component={CreateRule} />
           <Route path="/audit/:id" component={AuditResults} />
           <Route path="/audits" component={AuditHistory} />
