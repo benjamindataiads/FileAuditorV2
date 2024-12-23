@@ -22,18 +22,21 @@ async function validateProduct(product: any, selectedRules: any[], columnMapping
     mappedProduct[appField] = product[fileColumn];
   });
   
+  // Find the ID column once
+  const idColumn = Object.entries(columnMapping)
+    .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
+    (product.identifiant ? 'identifiant' : null);
+  
+  const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
+  
+  // Process each rule
   for (const rule of selectedRules) {
+    if (!rule || !rule.id) continue; // Skip invalid rules
+    
     const result = evaluateRule(mappedProduct, rule);
-    // Find the file column that maps to 'identifiant'
-    const idColumn = Object.entries(columnMapping)
-      .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
-      // Direct field access if it exists in the product
-      (product.identifiant ? 'identifiant' : null);
-    
-    const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
-    
     results.push({
       productId,
+      ruleId: rule.id,
       fieldName: rule.condition.field,
       status: result.status,
       details: result.details,
@@ -309,11 +312,11 @@ export function registerRoutes(app: Express): Server {
         const results = await validateProduct(product, rules, columnMapping);
         return results.map(result => ({
           ...result,
-          ruleId: rules.find(r => 
+          ruleId: result.ruleId || rules.find(r => 
             r.condition.field === result.fieldName && 
             r.id
           )?.id,
-        }));
+        })).filter(r => r.ruleId != null); // Ensure we only keep results with valid ruleIds
       });
       
       const chunkResults = await Promise.all(chunkPromises);
