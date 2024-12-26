@@ -85,12 +85,15 @@ export function AuditReport({ audit }: AuditReportProps) {
     return grouped;
   };
 
-  const handleExport = () => {
+  const handleExport = (format: 'csv' | 'tsv' = 'csv') => {
     const rules = [...new Set(audit.results?.map(r => r.rule?.name) || [])];
     const groupedResults = getGroupedResults();
+    const delimiter = format === 'csv' ? ',' : '\t';
+    const mimeType = format === 'csv' ? 'text/csv' : 'text/tab-separated-values';
+    const extension = format === 'csv' ? 'csv' : 'tsv';
 
-    const csvContent = [
-      ["ID", ...rules].join(","),
+    const content = [
+      ["ID", ...rules].join(delimiter),
       ...Object.entries(groupedResults).map(([productId, results]) =>
         [
           productId,
@@ -100,16 +103,16 @@ export function AuditReport({ audit }: AuditReportProps) {
               ? `${result.status}${result.details ? ` (${result.details})` : ''}`
               : "-";
           }),
-        ].join(",")
+        ].join(delimiter)
       ),
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
+    const blob = new Blob([content], { type: mimeType });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.setAttribute("hidden", "");
     a.setAttribute("href", url);
-    a.setAttribute("download", `audit-${audit.id}-results.csv`);
+    a.setAttribute("download", `audit-${audit.id}-results.${extension}`);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -255,10 +258,16 @@ export function AuditReport({ audit }: AuditReportProps) {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Detailed Results</CardTitle>
-            <Button onClick={handleExport}>
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => handleExport('csv')}>
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+              <Button onClick={() => handleExport('tsv')} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export TSV
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border">
