@@ -139,12 +139,20 @@ export const defaultRules: Omit<InsertRule, "id" | "createdAt">[] = [
 
 export async function seedDefaultRules(db: any) {
   try {
-    // Clear existing rules
-    await db.delete(rules);
+    // Get existing rules
+    const existingRules = await db.select().from(rules);
+    const existingRuleNames = new Set(existingRules.map(rule => rule.name));
 
-    // Insert default rules
-    await db.insert(rules).values(defaultRules);
-    console.log(`${defaultRules.length} default rules seeded successfully`);
+    // Filter out rules that already exist
+    const newRules = defaultRules.filter(rule => !existingRuleNames.has(rule.name));
+
+    if (newRules.length > 0) {
+      // Insert only new rules
+      await db.insert(rules).values(newRules);
+      console.log(`${newRules.length} new default rules seeded successfully`);
+    } else {
+      console.log('All default rules already exist');
+    }
   } catch (error) {
     console.error("Error seeding default rules:", error);
   }
