@@ -243,7 +243,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="category" dataKey="rule" angle={-45} textAnchor="end" interval={0} height={100} />
-                  <YAxis type="number" unit="%" domain={[0, 100]} />
+                  <YAxis type="number" unit="%" domain={[0, 100]} tickFormatter={(value) => `${Math.round(value)}%`} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
                   <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ marginLeft: '50px' }} />
                   <Bar dataKey="ok" stackId="stack" fill="#22c55e" name="Compliant" />
