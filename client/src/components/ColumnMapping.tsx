@@ -31,6 +31,19 @@ export function ColumnMapping({ file, onMappingComplete }: ColumnMappingProps) {
           if (lines.length > 0) {
             const headers = lines[0].split('\t').map(h => h.trim());
             setHeaders(headers);
+            
+            // Auto-map fields where header matches French field name
+            const newMapping = { ...mapping };
+            headers.forEach(header => {
+              availableFields.forEach(field => {
+                const frenchName = getFrenchFieldName(field);
+                if (header.toLowerCase() === frenchName.toLowerCase()) {
+                  newMapping[header] = field;
+                }
+              });
+            });
+            setMapping(newMapping);
+            onMappingComplete(newMapping);
           }
         };
         reader.readAsText(file);
@@ -42,7 +55,7 @@ export function ColumnMapping({ file, onMappingComplete }: ColumnMappingProps) {
     if (file) {
       readHeaders();
     }
-  }, [file]);
+  }, [file, availableFields, onMappingComplete]);
 
   const handleMappingChange = (field: string, header: string) => {
     const newMapping = { ...mapping };
