@@ -198,7 +198,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                     ))}
                   </Pie>
                   <Tooltip />
-                  <Legend />
+                  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ marginLeft: '50px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -245,7 +245,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                   <XAxis type="category" dataKey="rule" angle={-45} textAnchor="end" interval={0} height={100} />
                   <YAxis type="number" unit="%" domain={[0, 100]} />
                   <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                  <Legend layout="vertical" align="right" verticalAlign="middle" />
+                  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ marginLeft: '50px' }} />
                   <Bar dataKey="ok" stackId="stack" fill="#22c55e" name="Compliant" />
                   <Bar dataKey="warning" stackId="stack" fill="#f59e0b" name="Warning" />
                   <Bar dataKey="critical" stackId="stack" fill="#ef4444" name="Critical" />
