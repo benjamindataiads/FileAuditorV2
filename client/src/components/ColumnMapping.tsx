@@ -98,6 +98,10 @@ export function ColumnMapping({ file, onMappingComplete }: ColumnMappingProps) {
       {Object.keys(mapping).length > 0 && (
         <div className="w-80 rounded-md border p-4 bg-background h-fit sticky top-4">
           <h3 className="font-medium mb-2">Current Mappings</h3>
+          <div className="flex justify-between mb-2 text-sm font-medium text-muted-foreground">
+            <span>GMC Fields</span>
+            <span>File Column Name</span>
+          </div>
           <div className="flex flex-col gap-2">
             {Object.entries(mapping).map(([header, field]) => (
               <Badge key={header} variant="secondary" className="justify-between">
