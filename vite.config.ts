@@ -22,7 +22,14 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://0.0.0.0:3003'
+      '/api': {
+        target: 'http://0.0.0.0:3003',
+        changeOrigin: true,
+        ws: true
+      }
+    },
+    hmr: {
+      clientPort: 443
     }
   }
 });
