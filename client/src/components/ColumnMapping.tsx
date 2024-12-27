@@ -71,7 +71,10 @@ export function ColumnMapping({ file, onMappingComplete }: ColumnMappingProps) {
         <div className="grid gap-4">
           {availableFields.map((field) => (
             <div key={field} className="space-y-2">
-              <Label>{getFrenchFieldName(field)}</Label>
+              <div className="flex items-center justify-between">
+                <Label>{getFrenchFieldName(field)}</Label>
+                <div className={`h-2 w-2 rounded-full ${Object.entries(mapping).find(([_, f]) => f === field) ? 'bg-green-500' : 'bg-red-500'}`} />
+              </div>
               <Select
                 value={Object.entries(mapping).find(([_, f]) => f === field)?.[0] || "_unmapped"}
                 onValueChange={(header) => handleMappingChange(field, header)}
