@@ -42,7 +42,7 @@ export function AuditResults() {
           <CardTitle>{audit.name}</CardTitle>
         </CardHeader>
         <CardContent>
-          <AuditReport audit={audit} />
+          <AuditReport audit={audit} onPageChange={setPage} />
         </CardContent>
       </Card>
     </div>
