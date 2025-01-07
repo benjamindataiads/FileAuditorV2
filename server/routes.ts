@@ -567,6 +567,7 @@ async function loadRules(ruleIds: number[]): Promise<any[]> {
 }
 
 async function insertResultsBatch(results: any[], auditId: number): Promise<void> {
+    const INSERTION_CHUNK_SIZE = 100;
     const validResults = results.filter(result => 
       result && 
       result.ruleId && 
@@ -576,17 +577,20 @@ async function insertResultsBatch(results: any[], auditId: number): Promise<void
 
     if (validResults.length === 0) return;
 
-    const resultsWithAuditId = validResults.map(result => ({
-        auditId,
-        ruleId: result.ruleId,
-        productId: result.productId,
-        status: result.status,
-        details: result.details || null,
-        fieldName: result.fieldName
-    }));
+    // Process in smaller chunks
+    for (let i = 0; i < validResults.length; i += INSERTION_CHUNK_SIZE) {
+        const chunk = validResults.slice(i, i + INSERTION_CHUNK_SIZE);
+        const resultsWithAuditId = chunk.map(result => ({
+            auditId,
+            ruleId: result.ruleId,
+            productId: result.productId,
+            status: result.status,
+            details: result.details || null,
+            fieldName: result.fieldName
+        }));
 
-    console.log('Inserting batch results:', resultsWithAuditId);
-    await db.insert(auditResults).values(resultsWithAuditId);
+        await db.insert(auditResults).values(resultsWithAuditId);
+    }
 }
 
 
