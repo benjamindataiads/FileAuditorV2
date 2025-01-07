@@ -120,8 +120,18 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
     document.body.removeChild(a);
   };
 
-  const paginatedResults = audit.results?.slice(0, 20) || []; // Display first 20 rows
-
+  // Get all unique rules first
+  const allRules = Array.from(new Set(audit.results?.map(r => r.rule?.name) || []));
+  
+  // Calculate pagination
+  const itemsPerPage = 20;
+  const startIndex = ((audit.pagination?.page || 1) - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  
+  // Get paginated product IDs
+  const uniqueProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || []));
+  const paginatedProductIds = uniqueProductIds.slice(startIndex, endIndex);
+  
   return (
     <TooltipProvider>
       <div className="space-y-6">
@@ -279,7 +289,7 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Product ID</TableHead>
-                    {Array.from(new Set((paginatedResults || []).map(r => r.rule?.name))).map((ruleName) => (
+                    {allRules.map((ruleName) => (
                       <TableHead key={ruleName} className="text-center font-bold">
                         {ruleName}
                       </TableHead>
@@ -287,14 +297,14 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(getGroupedResults()).length > 0 ? (
-                    Object.entries(getGroupedResults()).map(([productId, results]) => {
-                      const displayedResults = results.slice(0,20); //Limit to 20 results per product
+                  {paginatedProductIds.length > 0 ? (
+                    paginatedProductIds.map((productId) => {
+                      const results = (getGroupedResults()[productId] || []);
                       return (
                         <TableRow key={productId}>
                           <TableCell className="font-medium">{productId}</TableCell>
-                          {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => {
-                            const result = displayedResults.find(r => r.rule?.name === ruleName);
+                          {allRules.map((ruleName) => {
+                            const result = results.find(r => r.rule?.name === ruleName);
                             return (
                               <TableCell key={ruleName} className="text-center">
                                 {result ? (
