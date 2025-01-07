@@ -12,8 +12,10 @@ import type { Audit } from "@/lib/types";
 export function AuditResults() {
   const { id } = useParams<{ id: string }>();
 
+  const [page, setPage] = useState(1);
   const { data: audit, isLoading } = useQuery<Audit>({
-    queryKey: [`/api/audits/${id}`],
+    queryKey: [`/api/audits/${id}`, page],
+    queryFn: () => fetch(`/api/audits/${id}?page=${page}&limit=100`).then(res => res.json()),
     enabled: !!id,
   });
 

@@ -453,23 +453,42 @@ app.delete("/api/rules/:id", async (req, res) => {
   });
 
   app.get("/api/audits/:id", async (req, res) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 100;
+    const offset = (page - 1) * limit;
+
     const audit = await db.query.audits.findFirst({
-      where: eq(audits.id, parseInt(req.params.id)),
-      with: {
-        results: {
-          with: {
-            rule: true
-          },
-          orderBy: (results, { asc }) => [asc(results.productId)]
-        }
-      }
+      where: eq(audits.id, parseInt(req.params.id))
     });
 
     if (!audit) {
       return res.status(404).json({ message: "Audit not found" });
     }
 
-    res.json(audit);
+    const results = await db.query.auditResults.findMany({
+      where: eq(auditResults.auditId, audit.id),
+      with: {
+        rule: true
+      },
+      limit: limit,
+      offset: offset,
+      orderBy: (results, { asc }) => [asc(results.productId)]
+    });
+
+    const totalResults = await db.select({ count: sql`count(*)` })
+      .from(auditResults)
+      .where(eq(auditResults.auditId, audit.id));
+
+    res.json({
+      ...audit,
+      results,
+      pagination: {
+        total: totalResults[0].count,
+        page,
+        limit,
+        totalPages: Math.ceil(totalResults[0].count / limit)
+      }
+    });
   });
 
   app.post("/api/audits/:id/rerun", async (req, res) => {
