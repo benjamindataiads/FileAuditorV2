@@ -120,17 +120,29 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
     document.body.removeChild(a);
   };
 
-  // Get all unique rules first and sort them
+  // Get all unique rules and product IDs
   const allRules = Array.from(new Set(audit.results?.map(r => r.rule?.name).filter(Boolean) || [])).sort();
-
+  const allProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || [])).sort();
+  
   // Calculate pagination
   const itemsPerPage = 20;
-  const startIndex = ((audit.pagination?.page || 1) - 1) * itemsPerPage;
+  const currentPage = audit.pagination?.page || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
 
   // Get paginated product IDs
-  const uniqueProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || [])).sort();
-  const paginatedProductIds = uniqueProductIds.slice(startIndex, endIndex);
+  const paginatedProductIds = allProductIds.slice(startIndex, endIndex);
+  
+  // Group results by product ID for efficient lookup
+  const resultsByProduct = audit.results?.reduce((acc, result) => {
+    if (!acc[result.productId]) {
+      acc[result.productId] = {};
+    }
+    if (result.rule?.name) {
+      acc[result.productId][result.rule.name] = result;
+    }
+    return acc;
+  }, {} as Record<string, Record<string, typeof audit.results[0]>>);
 
   return (
     <TooltipProvider>
@@ -298,13 +310,11 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                 </TableHeader>
                 <TableBody>
                   {paginatedProductIds.length > 0 ? (
-                    paginatedProductIds.map((productId) => {
-                      const results = (getGroupedResults()[productId] || []);
-                      return (
-                        <TableRow key={productId}>
-                          <TableCell className="font-medium">{productId}</TableCell>
-                          {allRules.map((ruleName) => {
-                            const result = results.find(r => r.rule?.name === ruleName);
+                    paginatedProductIds.map((productId) => (
+                      <TableRow key={productId}>
+                        <TableCell className="font-medium">{productId}</TableCell>
+                        {allRules.map((ruleName) => {
+                          const result = resultsByProduct?.[productId]?.[ruleName];
                             return (
                               <TableCell key={ruleName} className="text-center">
                                 {result ? (
