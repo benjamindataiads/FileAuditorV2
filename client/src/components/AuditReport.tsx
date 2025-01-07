@@ -134,20 +134,6 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
   // Get paginated product IDs
   const paginatedProductIds = allProductIds.slice(startIndex, endIndex);
   
-  // Ensure all rule results are properly mapped
-  const resultsByProduct = audit.results.reduce((acc, result) => {
-    if (!acc[result.productId]) {
-      acc[result.productId] = {};
-    }
-    if (result.rule?.name) {
-      acc[result.productId][result.rule.name] = {
-        status: result.status,
-        details: result.details
-      };
-    }
-    return acc;
-  }, {} as Record<string, Record<string, {status: string, details: string | null}>>);
-  
   // Group results by product ID for efficient lookup
   const resultsByProduct = audit.results?.reduce((acc, result) => {
     if (!acc[result.productId]) {
