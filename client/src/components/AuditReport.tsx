@@ -87,15 +87,19 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
     return grouped;
   };
 
-  const handleExport = (format: 'csv' | 'tsv' = 'csv') => {
-    const rules = [...new Set(audit.results?.map(r => r.rule?.name) || [])].sort();
-    const allProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || [])).sort();
+  const handleExport = async (format: 'csv' | 'tsv' = 'csv') => {
+    // Fetch all results
+    const response = await fetch(`/api/audits/${audit.id}/export`);
+    const allResults = await response.json();
+    
+    const rules = [...new Set(allResults.results?.map((r: any) => r.rule?.name) || [])].sort();
+    const allProductIds = Array.from(new Set(allResults.results?.map((r: any) => r.productId) || [])).sort();
     const delimiter = format === 'csv' ? ',' : '\t';
     const mimeType = format === 'csv' ? 'text/csv' : 'text/tab-separated-values';
     const extension = format === 'csv' ? 'csv' : 'tsv';
 
     // Group all results by product ID for efficient lookup
-    const resultsByProduct = audit.results?.reduce((acc, result) => {
+    const resultsByProduct = allResults.results?.reduce((acc: any, result: any) => {
       if (!acc[result.productId]) {
         acc[result.productId] = {};
       }
@@ -103,7 +107,7 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
         acc[result.productId][result.rule.name] = result;
       }
       return acc;
-    }, {} as Record<string, Record<string, typeof audit.results[0]>>);
+    }, {} as Record<string, Record<string, any>>);
 
     const content = [
       ["ID", ...rules].join(delimiter),

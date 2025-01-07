@@ -452,6 +452,29 @@ app.delete("/api/rules/:id", async (req, res) => {
     }
   });
 
+  app.get("/api/audits/:id/export", async (req, res) => {
+    const audit = await db.query.audits.findFirst({
+      where: eq(audits.id, parseInt(req.params.id))
+    });
+
+    if (!audit) {
+      return res.status(404).json({ message: "Audit not found" });
+    }
+
+    const results = await db.query.auditResults.findMany({
+      where: eq(auditResults.auditId, audit.id),
+      with: {
+        rule: true
+      },
+      orderBy: (results, { asc }) => [asc(results.productId)]
+    });
+
+    res.json({
+      ...audit,
+      results
+    });
+  });
+
   app.get("/api/audits/:id", async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 100;
