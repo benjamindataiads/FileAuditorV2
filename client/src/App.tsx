@@ -1,6 +1,6 @@
 import { Switch, Route } from "wouter";
 import { Navigation } from "@/components/Navigation";
-import { Suspense } from "react";
+import React, { Suspense } from "react";
 import { Home } from "@/pages/Home";
 import { RuleLibrary } from "@/pages/RuleLibrary";
 import { CreateRule } from "@/pages/CreateRule";
