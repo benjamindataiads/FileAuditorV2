@@ -123,14 +123,19 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
   // Get all unique rules first
   const allRules = Array.from(new Set(audit.results?.map(r => r.rule?.name) || []));
   
+  // Get all unique product IDs and sort them
+  const uniqueProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || [])).sort();
+  
   // Calculate pagination
   const itemsPerPage = 20;
   const startIndex = ((audit.pagination?.page || 1) - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   
   // Get paginated product IDs
-  const uniqueProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || []));
   const paginatedProductIds = uniqueProductIds.slice(startIndex, endIndex);
+  
+  // Get all rules that should be displayed
+  const allRules = Array.from(new Set(audit.results?.map(r => r.rule?.name).filter(Boolean) || [])).sort();
   
   return (
     <TooltipProvider>
