@@ -1,4 +1,3 @@
-
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
@@ -32,7 +31,8 @@ export const audits = pgTable("audits", {
   totalProducts: integer("total_products").notNull(),
   compliantProducts: integer("compliant_products").notNull(),
   warningProducts: integer("warning_products").notNull(),
-  criticalProducts: integer("critical_products").notNull(),
+  criticalProducts: integer("critical_products").notNull().default(0),
+  progress: integer("progress").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -221,9 +221,12 @@ export function Home() {
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
-            <p className="text-sm text-muted-foreground">
-              Processing your product feed...
-            </p>
+            <div className="w-full max-w-xs">
+              <Progress value={uploadMutation.data?.progress || 0} className="mb-2" />
+              <p className="text-sm text-muted-foreground text-center">
+                Processing your product feed... {uploadMutation.data?.progress || 0}%
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}

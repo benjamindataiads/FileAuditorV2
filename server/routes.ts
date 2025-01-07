@@ -267,6 +267,13 @@ export function registerRoutes(app: Express): Server {
     const CHUNK_SIZE = 1000; // Process 1000 records at a time
     let processedCount = 0;
     let currentChunk: any[] = [];
+    
+    // Get total number of rows
+    const totalRows = csvParse(req.file.buffer, {
+      delimiter: '\t',
+      columns: true,
+      skip_empty_lines: true,
+    }).length;
 
     const parser = csvParse(req.file.buffer, {
       delimiter: '\t',
@@ -304,8 +311,12 @@ export function registerRoutes(app: Express): Server {
         processedResults += results.length;
 
         // Update progress in audit record
+        const progress = Math.round((processedCount / totalRows) * 100);
         await db.update(audits)
-          .set({ totalProducts: processedCount })
+          .set({ 
+            totalProducts: processedCount,
+            progress: progress 
+          })
           .where(eq(audits.id, auditId));
 
         // Clear chunk from memory
