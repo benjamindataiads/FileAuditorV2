@@ -36,12 +36,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Audit } from "@/lib/types";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface AuditReportProps {
   audit: Audit;
+  onPageChange: (page: number) => void; // Added onPageChange function
 }
 
-export function AuditReport({ audit }: AuditReportProps) {
+export function AuditReport({ audit, onPageChange }: AuditReportProps) {
   const pieChartData = [
     { name: "Compliant", value: audit.compliantProducts, color: "#22c55e" },
     { name: "Warnings", value: audit.warningProducts, color: "#f59e0b" },
@@ -99,7 +101,7 @@ export function AuditReport({ audit }: AuditReportProps) {
           productId,
           ...rules.map(ruleName => {
             const result = results.find(r => r.rule?.name === ruleName);
-            return result 
+            return result
               ? `${result.status}${result.details ? ` (${result.details})` : ''}`
               : "-";
           }),
@@ -117,6 +119,8 @@ export function AuditReport({ audit }: AuditReportProps) {
     a.click();
     document.body.removeChild(a);
   };
+
+  const paginatedResults = audit.results?.slice(0, 20) || []; // Display first 20 rows
 
   return (
     <TooltipProvider>
@@ -275,7 +279,7 @@ export function AuditReport({ audit }: AuditReportProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Product ID</TableHead>
-                    {Array.from(new Set((audit.results || []).map(r => r.rule?.name))).map((ruleName) => (
+                    {Array.from(new Set((paginatedResults || []).map(r => r.rule?.name))).map((ruleName) => (
                       <TableHead key={ruleName} className="text-center font-bold">
                         {ruleName}
                       </TableHead>
@@ -284,56 +288,60 @@ export function AuditReport({ audit }: AuditReportProps) {
                 </TableHeader>
                 <TableBody>
                   {Object.entries(getGroupedResults()).length > 0 ? (
-                    Object.entries(getGroupedResults()).map(([productId, results]) => (
-                      <TableRow key={productId}>
-                        <TableCell className="font-medium">{productId}</TableCell>
-                        {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => {
-                        const result = results.find(r => r.rule?.name === ruleName);
-                        return (
-                          <TableCell key={ruleName} className="text-center">
-                            {result ? (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="inline-flex items-center justify-center">
-                                      <Badge
-                                        variant="outline"
-                                        className={
-                                          result.status === "ok"
-                                            ? "bg-green-100 text-green-800"
-                                            : result.status === "warning"
-                                            ? "bg-yellow-100 text-yellow-800"
-                                            : "bg-red-100 text-red-800"
-                                        }
-                                      >
-                                        {result.status === "ok" && (
-                                          <CheckCircle className="h-4 w-4 mr-1" />
-                                        )}
-                                        {result.status === "warning" && (
-                                          <AlertTriangle className="h-4 w-4 mr-1" />
-                                        )}
-                                        {result.status === "critical" && (
-                                          <XCircle className="h-4 w-4 mr-1" />
-                                        )}
-                                        {result.status}
-                                      </Badge>
-                                    </div>
-                                  </TooltipTrigger>
-                                  {result.details && (
-                                    <TooltipContent className="max-w-sm">
-                                      <p className="text-sm">{result.details}</p>
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                              </TooltipProvider>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                      </TableRow>
-                    ))) : (
+                    Object.entries(getGroupedResults()).map(([productId, results]) => {
+                      const displayedResults = results.slice(0,20); //Limit to 20 results per product
+                      return (
+                        <TableRow key={productId}>
+                          <TableCell className="font-medium">{productId}</TableCell>
+                          {Array.from(new Set(audit.results?.map(r => r.rule?.name) || [])).map((ruleName) => {
+                            const result = displayedResults.find(r => r.rule?.name === ruleName);
+                            return (
+                              <TableCell key={ruleName} className="text-center">
+                                {result ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="inline-flex items-center justify-center">
+                                          <Badge
+                                            variant="outline"
+                                            className={
+                                              result.status === "ok"
+                                                ? "bg-green-100 text-green-800"
+                                                : result.status === "warning"
+                                                ? "bg-yellow-100 text-yellow-800"
+                                                : "bg-red-100 text-red-800"
+                                            }
+                                          >
+                                            {result.status === "ok" && (
+                                              <CheckCircle className="h-4 w-4 mr-1" />
+                                            )}
+                                            {result.status === "warning" && (
+                                              <AlertTriangle className="h-4 w-4 mr-1" />
+                                            )}
+                                            {result.status === "critical" && (
+                                              <XCircle className="h-4 w-4 mr-1" />
+                                            )}
+                                            {result.status}
+                                          </Badge>
+                                        </div>
+                                      </TooltipTrigger>
+                                      {result.details && (
+                                        <TooltipContent className="max-w-sm">
+                                          <p className="text-sm">{result.details}</p>
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })
+                  ) : (
                     <TableRow>
                       <TableCell colSpan={Object.keys(getGroupedResults()).length + 1} className="text-center">
                         No results found
@@ -342,6 +350,33 @@ export function AuditReport({ audit }: AuditReportProps) {
                   )}
                 </TableBody>
               </Table>
+            </div>
+            <div className="mt-4 flex justify-center">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious href="#" onClick={(e) => {
+                      e.preventDefault();
+                      if (audit.pagination?.page > 1) {
+                        onPageChange(audit.pagination.page - 1);
+                      }
+                    }} />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationLink isActive>
+                      {audit.pagination?.page || 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext href="#" onClick={(e) => {
+                      e.preventDefault();
+                      if (audit.pagination?.page < (audit.pagination?.totalPages || 1)) {
+                        onPageChange(audit.pagination.page + 1);
+                      }
+                    }} />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           </CardContent>
         </Card>
