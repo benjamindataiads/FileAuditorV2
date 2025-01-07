@@ -88,19 +88,30 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
   };
 
   const handleExport = (format: 'csv' | 'tsv' = 'csv') => {
-    const rules = [...new Set(audit.results?.map(r => r.rule?.name) || [])];
-    const groupedResults = getGroupedResults();
+    const rules = [...new Set(audit.results?.map(r => r.rule?.name) || [])].sort();
+    const allProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || [])).sort();
     const delimiter = format === 'csv' ? ',' : '\t';
     const mimeType = format === 'csv' ? 'text/csv' : 'text/tab-separated-values';
     const extension = format === 'csv' ? 'csv' : 'tsv';
 
+    // Group all results by product ID for efficient lookup
+    const resultsByProduct = audit.results?.reduce((acc, result) => {
+      if (!acc[result.productId]) {
+        acc[result.productId] = {};
+      }
+      if (result.rule?.name) {
+        acc[result.productId][result.rule.name] = result;
+      }
+      return acc;
+    }, {} as Record<string, Record<string, typeof audit.results[0]>>);
+
     const content = [
       ["ID", ...rules].join(delimiter),
-      ...Object.entries(groupedResults).map(([productId, results]) =>
+      ...allProductIds.map(productId =>
         [
           productId,
           ...rules.map(ruleName => {
-            const result = results.find(r => r.rule?.name === ruleName);
+            const result = resultsByProduct?.[productId]?.[ruleName];
             return result
               ? `${result.status}${result.details ? ` (${result.details})` : ''}`
               : "-";
