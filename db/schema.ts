@@ -31,8 +31,8 @@ export const audits = pgTable("audits", {
   totalProducts: integer("total_products").notNull(),
   compliantProducts: integer("compliant_products").notNull(),
   warningProducts: integer("warning_products").notNull(),
-  criticalProducts: integer("critical_products").notNull().default(0),
-  progress: integer("progress").notNull().default(0),
+  criticalProducts: integer("critical_products").notNull(),
+  progress: integer("progress").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
