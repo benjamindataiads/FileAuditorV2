@@ -315,52 +315,51 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                         <TableCell className="font-medium">{productId}</TableCell>
                         {allRules.map((ruleName) => {
                           const result = resultsByProduct?.[productId]?.[ruleName];
-                            return (
-                              <TableCell key={ruleName} className="text-center">
-                                {result ? (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="inline-flex items-center justify-center">
-                                          <Badge
-                                            variant="outline"
-                                            className={
-                                              result.status === "ok"
-                                                ? "bg-green-100 text-green-800"
-                                                : result.status === "warning"
-                                                ? "bg-yellow-100 text-yellow-800"
-                                                : "bg-red-100 text-red-800"
-                                            }
-                                          >
-                                            {result.status === "ok" && (
-                                              <CheckCircle className="h-4 w-4 mr-1" />
-                                            )}
-                                            {result.status === "warning" && (
-                                              <AlertTriangle className="h-4 w-4 mr-1" />
-                                            )}
-                                            {result.status === "critical" && (
-                                              <XCircle className="h-4 w-4 mr-1" />
-                                            )}
-                                            {result.status}
-                                          </Badge>
-                                        </div>
-                                      </TooltipTrigger>
-                                      {result.details && (
-                                        <TooltipContent className="max-w-sm">
-                                          <p className="text-sm">{result.details}</p>
-                                        </TooltipContent>
-                                      )}
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })
+                          return (
+                            <TableCell key={ruleName} className="text-center">
+                              {result ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="inline-flex items-center justify-center">
+                                        <Badge
+                                          variant="outline"
+                                          className={
+                                            result.status === "ok"
+                                              ? "bg-green-100 text-green-800"
+                                              : result.status === "warning"
+                                              ? "bg-yellow-100 text-yellow-800"
+                                              : "bg-red-100 text-red-800"
+                                          }
+                                        >
+                                          {result.status === "ok" && (
+                                            <CheckCircle className="h-4 w-4 mr-1" />
+                                          )}
+                                          {result.status === "warning" && (
+                                            <AlertTriangle className="h-4 w-4 mr-1" />
+                                          )}
+                                          {result.status === "critical" && (
+                                            <XCircle className="h-4 w-4 mr-1" />
+                                          )}
+                                          {result.status}
+                                        </Badge>
+                                      </div>
+                                    </TooltipTrigger>
+                                    {result.details && (
+                                      <TooltipContent className="max-w-sm">
+                                        <p className="text-sm">{result.details}</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))
                   ) : (
                     <TableRow>
                       <TableCell colSpan={Object.keys(getGroupedResults()).length + 1} className="text-center">
