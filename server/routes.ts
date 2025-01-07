@@ -15,24 +15,24 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Helper function to validate a single product
 async function validateProduct(product: any, selectedRules: any[], columnMapping: Record<string, string>) {
   const results = [];
-  
+
   // Create a mapped product with our field names
   const mappedProduct: Record<string, any> = {};
   Object.entries(columnMapping).forEach(([fileColumn, appField]) => {
     mappedProduct[appField] = product[fileColumn];
   });
-  
+
   // Find the ID column once
   const idColumn = Object.entries(columnMapping)
     .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
     (product.identifiant ? 'identifiant' : null);
-  
+
   const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
-  
+
   // Process each rule
   for (const rule of selectedRules) {
     if (!rule || !rule.id) continue; // Skip invalid rules
-    
+
     const result = evaluateRule(mappedProduct, rule);
     results.push({
       productId,
@@ -64,7 +64,7 @@ export function registerRoutes(app: Express): Server {
     console.log('Database URL exists:', !!process.env.DATABASE_URL);
     try {
       const { name, description, category, condition, criticality } = req.body;
-      
+
       // Basic validation
       if (!name || !description || !category || !criticality) {
         return res.status(400).json({ 
@@ -120,7 +120,7 @@ export function registerRoutes(app: Express): Server {
           }
           processedCondition.value = minLength;
           break;
-          
+
         case "contains":
           if (!condition.value || typeof condition.value !== "string") {
             return res.status(400).json({ 
@@ -138,7 +138,7 @@ export function registerRoutes(app: Express): Server {
             });
           }
           break;
-          
+
         case "regex":
           try {
             new RegExp(condition.value);
@@ -149,7 +149,7 @@ export function registerRoutes(app: Express): Server {
             });
           }
           break;
-          
+
         case "range":
           try {
             const range = JSON.parse(condition.value);
@@ -164,7 +164,7 @@ export function registerRoutes(app: Express): Server {
             });
           }
           break;
-          
+
         case "crossField":
           try {
             const crossField = typeof condition.value === 'string' ? 
@@ -212,16 +212,16 @@ export function registerRoutes(app: Express): Server {
       const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
       const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
       const sampleMode = req.body.sampleMode || "first";
-      
+
       // First parse all rows to get total count
       const allRows = csvParse(fileContent, {
         delimiter: '\t',
         columns: true,
       });
-      
+
       const totalRows = allRows.length;
       const sampleSize = 5;
-      
+
       // Select rows based on sample mode
       let selectedRows: any[] = [];
       switch (sampleMode) {
@@ -240,9 +240,9 @@ export function registerRoutes(app: Express): Server {
           selectedRows = Array.from(indices).map(index => allRows[index]);
           break;
       }
-      
+
       const results = [];
-      
+
       for (const record of selectedRows) {
         const productResults = await validateProduct(record, selectedRules, columnMapping);
         results.push(...productResults);
@@ -263,84 +263,80 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const fileContent = req.file.buffer.toString();
-    const fileHash = crypto.createHash('md5').update(fileContent).digest('hex');
-    
-    const parser = csvParse(fileContent, {
+    const fileHash = crypto.createHash('md5').update(req.file.buffer).digest('hex');
+    const CHUNK_SIZE = 1000; // Process 1000 records at a time
+    let processedCount = 0;
+    let currentChunk: any[] = [];
+
+    const parser = csvParse(req.file.buffer, {
       delimiter: '\t',
       columns: true,
+      skip_empty_lines: true,
     });
 
     const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
-    const products = [];
-    
-    for await (const record of parser) {
-      products.push(record);
-    }
+    const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
+
 
     // Create audit record
     const audit = await db.insert(audits).values({
       name: req.body.name || "Unnamed Audit",
       fileHash,
-      totalProducts: products.length,
+      totalProducts: 0, // Initialize to 0, will be updated later
       compliantProducts: 0,
       warningProducts: 0,
       criticalProducts: 0,
     }).returning();
 
     const auditId = audit[0].id;
-    const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
-    
+
     // Load all rules at once
     const rules = await loadRules(selectedRules);
-    
-    // Process products in parallel with batched DB operations
-    const allResults = [];
-    const batchPromises = [];
-    
-    // Process products in chunks to avoid memory issues
-    const BATCH_SIZE = 50; // Reduced batch size for better reliability
-    const productChunks = [];
-    for (let i = 0; i < products.length; i += BATCH_SIZE) {
-      productChunks.push(products.slice(i, i + BATCH_SIZE));
-    }
 
-    console.log(`Processing ${products.length} products with ${rules.length} rules`);
-    
-    for (const chunk of productChunks) {
-      const chunkPromises = chunk.map(async (product) => {
-        const results = await validateProduct(product, rules, columnMapping);
-        return results.map(result => ({
-          ...result,
-          ruleId: result.ruleId || rules.find(r => 
-            r.condition.field === result.fieldName && 
-            r.id
-          )?.id,
-        })).filter(r => r.ruleId != null); // Ensure we only keep results with valid ruleIds
-      });
-      
-      const chunkResults = await Promise.all(chunkPromises);
-      const flatResults = chunkResults.flat().filter(r => r.ruleId);
-      
-      // Insert results immediately for each chunk
-      if (flatResults.length > 0) {
-        await insertResultsBatch(flatResults, auditId);
+    let processedResults = 0;
+
+    for await (const record of parser) {
+      currentChunk.push(record);
+
+      if (currentChunk.length >= CHUNK_SIZE) {
+        const results = await processChunk(currentChunk, rules, columnMapping, auditId);
+        processedCount += currentChunk.length;
+        processedResults += results.length;
+
+        // Update progress in audit record
+        await db.update(audits)
+          .set({ totalProducts: processedCount })
+          .where(eq(audits.id, auditId));
+
+        // Clear chunk from memory
+        currentChunk = [];
       }
     }
 
-    // Insert any remaining results
-    if (allResults.length > 0) {
-      batchPromises.push(insertResultsBatch(allResults, auditId));
+    // Process remaining records
+    if (currentChunk.length > 0) {
+      await processChunk(currentChunk, rules, columnMapping, auditId);
+      processedCount += currentChunk.length;
     }
 
-    // Wait for all batch inserts to complete
-    await Promise.all(batchPromises);
+    async function processChunk(chunk: any[], rules: any[], columnMapping: any, auditId: number) {
+      const results = await Promise.all(
+        chunk.map(product => validateProduct(product, rules, columnMapping))
+      );
+
+      const flatResults = results.flat().filter(r => r.ruleId);
+      if (flatResults.length > 0) {
+        await insertResultsBatch(flatResults, auditId);
+      }
+
+      return flatResults;
+    }
 
     // Update audit counts
     const auditResultsData = await db.query.auditResults.findMany({
       where: eq(auditResults.auditId, auditId)
     });
-    
+
     console.log('Audit results after processing:', {
       auditId,
       totalResults: auditResultsData.length,
@@ -358,6 +354,7 @@ export function registerRoutes(app: Express): Server {
         compliantProducts: counts.compliant,
         warningProducts: counts.warning,
         criticalProducts: counts.critical,
+        totalProducts: processedCount, // Update totalProducts after processing
       })
       .where(eq(audits.id, auditId));
 
@@ -483,7 +480,7 @@ app.delete("/api/rules/:id", async (req, res) => {
     // Create new audit with same rules
     const ruleIds = [...new Set(oldAudit.results?.map(r => r.ruleId))].filter(Boolean);
     const rules = await loadRules(ruleIds);
-    
+
     if (!rules || rules.length === 0) {
       // Use original results if no rules found
       const results = oldAudit.results || [];
@@ -534,7 +531,7 @@ app.delete("/api/rules/:id", async (req, res) => {
     const auditResultsData = await db.query.auditResults.findMany({
       where: eq(auditResults.auditId, auditId)
     });
-    
+
     console.log('Audit results after processing:', {
       auditId,
       totalResults: auditResultsData.length,
@@ -576,9 +573,9 @@ async function insertResultsBatch(results: any[], auditId: number): Promise<void
       result.productId && 
       result.status
     );
-    
+
     if (validResults.length === 0) return;
-    
+
     const resultsWithAuditId = validResults.map(result => ({
         auditId,
         ruleId: result.ruleId,
@@ -587,7 +584,7 @@ async function insertResultsBatch(results: any[], auditId: number): Promise<void
         details: result.details || null,
         fieldName: result.fieldName
     }));
-    
+
     console.log('Inserting batch results:', resultsWithAuditId);
     await db.insert(auditResults).values(resultsWithAuditId);
 }
@@ -602,7 +599,7 @@ function evaluateRule(product: any, rule: any) {
   const getFieldValue = (fieldName: string) => {
     // Try to get value using English field name first
     let value = product[fieldName];
-    
+
     // If not found and it's a known field, try the French equivalent
     if (value === undefined || value === null) {
       // Check if this is a known field mapping
@@ -620,7 +617,7 @@ function evaluateRule(product: any, rule: any) {
         }
       }
     }
-    
+
     return value === undefined || value === null ? "" : String(value);
   };
 
@@ -628,7 +625,7 @@ function evaluateRule(product: any, rule: any) {
   const compareValues = (value1: string, value2: string, operator: string) => {
     const v1 = value1.toLowerCase();
     const v2 = value2.toLowerCase();
-    
+
     switch (operator) {
       case "==": return v1 === v2;
       case "!=": return v1 !== v2;
@@ -698,7 +695,7 @@ function evaluateRule(product: any, rule: any) {
             } else {
               parsedDate = dateParse(fieldValue, condition.dateFormat || "yyyy-MM-dd", new Date());
             }
-            
+
             if (isNaN(parsedDate.getTime())) {
               status = rule.criticality;
               details = `Field '${condition.field}' is not a valid date in format ${condition.dateFormat || "yyyy-MM-dd"}`;
@@ -737,7 +734,7 @@ function evaluateRule(product: any, rule: any) {
         case "crossField":
           const { field: compareFieldName, operator } = condition.value;
           const compareFieldValue = getFieldValue(compareFieldName);
-          
+
           if (!compareValues(fieldValue, compareFieldValue, operator)) {
             const operatorMap = {
               "==": "equal to",
