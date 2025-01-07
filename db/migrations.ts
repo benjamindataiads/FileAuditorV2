@@ -33,6 +33,7 @@ async function createTables() {
         compliant_products INTEGER NOT NULL,
         warning_products INTEGER NOT NULL,
         critical_products INTEGER NOT NULL,
+        progress INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
