@@ -298,7 +298,7 @@ export function registerRoutes(app: Express): Server {
         return fields.map(field => {
           // Only clean essential characters while preserving spaces and special chars
           return field
-            .replace(/[\t\n\r]+/g, ' ') // Replace tabs/newlines with single space
+            .replace(/[\t\n\r,]+/g, ' ') // Replace tabs/newlines/commas with single space
             .trim(); // Just trim start/end
         }).join('\t');
       } catch (error) {
