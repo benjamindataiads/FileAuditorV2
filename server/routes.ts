@@ -524,9 +524,12 @@ app.delete("/api/rules/:id", async (req, res) => {
       return strField;
     };
 
-    const rulesWithNames = await db.query.rules.findMany({
-      where: (rules, { inArray }) => inArray(rules.id, rules)
-    });
+    const rulesWithNames = await db.select({
+      id: rules.id,
+      name: rules.name
+    })
+    .from(rules)
+    .where(sql`${rules.id} = ANY(${rules})`);
 
     const ruleNames = rulesWithNames.map(r => r.name);
     
