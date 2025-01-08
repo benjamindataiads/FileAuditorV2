@@ -310,24 +310,40 @@ export function registerRoutes(app: Express): Server {
       }
     }).join('\n');
 
-    // Parse the TSV content with very relaxed options
-    const allRows = csvParse(cleanContent, {
-      delimiter: '\t',
-      columns: true,
-      quote: false, // Disable quote parsing completely
-      skip_empty_lines: true,
-      relax_column_count: true,
-      relax_quotes: true,
-      relax: true,
-      trim: true,
-      skip_records_with_error: true,
-      skip_records_with_empty_values: false,
-      bom: true,
-      escape: false, // Disable escape character handling
-      ltrim: true, // Trim left spaces
-      rtrim: true, // Trim right spaces
-      comment: false // Disable comment handling
-    });
+    try {
+      // Parse the TSV content with very relaxed options
+      const allRows = csvParse(cleanContent, {
+        delimiter: '\t',
+        columns: true,
+        quote: false, // Disable quote parsing completely
+        skip_empty_lines: true,
+        relax_column_count: true,
+        relax_quotes: true,
+        relax: true,
+        trim: true,
+        skip_records_with_error: true,
+        skip_records_with_empty_values: false,
+        bom: true,
+        escape: false, // Disable escape character handling
+        ltrim: true, // Trim left spaces
+        rtrim: true, // Trim right spaces
+        comment: false // Disable comment handling
+      });
+    } catch (error: any) {
+      if (error.code === 'CSV_NON_TRIMABLE_CHAR_AFTER_CLOSING_QUOTE') {
+        const lines = cleanContent.split('\n');
+        const problematicLine = lines[error.lines - 1];
+        const fields = problematicLine.split('\t');
+        const productId = fields[1]; // 'identifiant' is the second column
+        console.error('CSV parsing error:', {
+          error: error.code,
+          line: error.lines,
+          productId: productId,
+          description: fields[11] // Description column
+        });
+      }
+      throw error;
+    }
     const totalRows = allRows.length;
     console.log(`Total rows to process: ${totalRows}`);
 
