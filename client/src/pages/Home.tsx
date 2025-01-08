@@ -31,7 +31,8 @@ export function Home() {
         body: formData,
       });
       if (!response.ok) {
-        throw new Error("Failed to process audit");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to process audit");
       }
       const initialData = await response.json();
       return initialData;
