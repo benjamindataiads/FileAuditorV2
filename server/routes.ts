@@ -291,15 +291,23 @@ export function registerRoutes(app: Express): Server {
 
     const processedContent = processedRows.join('\n');
     // Clean and normalize the content before parsing
-    const cleanContent = processedContent.split('\n').map(line => {
-      return line.split('\t').map(field => {
-        // Strip all quotes and normalize whitespace
-        let cleaned = field.trim()
-          .replace(/["']/g, '') // Remove all quotes
-          .replace(/[\t\n\r]+/g, ' ') // Replace tabs/newlines with space
-          .replace(/\s+/g, ' '); // Normalize spaces
-        return cleaned;
-      }).join('\t');
+    const cleanContent = processedContent.split('\n').map((line, lineIndex) => {
+      try {
+        return line.split('\t').map((field, columnIndex) => {
+          // Strip all quotes and normalize whitespace
+          let cleaned = field.trim()
+            .replace(/["']/g, '') // Remove all quotes
+            .replace(/[\t\n\r]+/g, ' ') // Replace tabs/newlines with space
+            .replace(/\s+/g, ' '); // Normalize spaces
+          return cleaned;
+        }).join('\t');
+      } catch (error) {
+        console.error(`Error processing line ${lineIndex + 1}:`, {
+          line: line.substring(0, 100) + '...',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        return line;
+      }
     }).join('\n');
 
     // Parse the TSV content with very relaxed options
