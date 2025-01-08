@@ -586,7 +586,9 @@ app.delete("/api/rules/:id", async (req, res) => {
     });
 
     const delimiter = "\t";
-    const ruleNames = [...new Set(results.map(r => ({ id: r.ruleId, name: r.rule?.name })))].filter(r => r.id && r.name);
+    const ruleNames = [...new Set(results.map(r => JSON.stringify({ id: r.ruleId, name: r.rule?.name })))]
+      .map(str => JSON.parse(str))
+      .filter(r => r.id && r.name);
     const allProductIds = [...new Set(results.map(r => r.productId))];
     const resultsByProduct = results.reduce((acc, curr) => {
       acc[curr.productId] = acc[curr.productId] || {};
