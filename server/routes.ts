@@ -278,6 +278,9 @@ export function registerRoutes(app: Express): Server {
       delimiter: '\t',
       columns: true,
       skip_empty_lines: true,
+      relax_column_count: true,
+      relax_quotes: true,
+      trim: true
     });
     const totalRows = allRows.length;
     console.log(`Total rows to process: ${totalRows}`);
@@ -286,6 +289,9 @@ export function registerRoutes(app: Express): Server {
       delimiter: '\t',
       columns: true,
       skip_empty_lines: true,
+      relax_column_count: true,
+      relax_quotes: true,
+      trim: true
     });
 
     const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
@@ -330,11 +336,11 @@ export function registerRoutes(app: Express): Server {
 
       if (currentChunk.length >= CHUNK_SIZE) {
         const results = await processChunk(currentChunk, rules, columnMapping, auditId);
-        
+
         // Track actual rules processed based on results
         const actualRulesProcessed = results.length;
         processedResults += actualRulesProcessed;
-        
+
         const rulesProgress = Math.floor((processedResults / totalRulesExpected) * 100);
         const errorCount = results.filter(r => r.error).length;
 
