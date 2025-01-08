@@ -316,7 +316,10 @@ export function registerRoutes(app: Express): Server {
         relax_column_count: true,
         escape: '"',
         trim: false,
-        skip_records_with_error: true,
+        skip_records_with_error: false,
+        relax_quotes: true,
+        ltrim: true,
+        rtrim: false,
         bom: true
       });
     } catch (error: any) {
