@@ -332,9 +332,8 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                         const result = resultsByProduct?.[productId]?.[ruleName];
                         return (
                           <TableCell key={ruleName} className="text-center">
-                            {result ? (
-                              <TooltipProvider>
-                                <Tooltip>
+                            <TooltipProvider>
+                              <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="inline-flex items-center justify-center">
                                       <Badge
@@ -368,8 +367,22 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                                 </Tooltip>
                               </TooltipProvider>
                             ) : (
-                              "-"
-                            )}
+                              <TooltipTrigger asChild>
+                                  <div className="inline-flex items-center justify-center">
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-gray-100 text-gray-800"
+                                    >
+                                      <MinusCircle className="h-4 w-4 mr-1" />
+                                      not checked
+                                    </Badge>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-sm">
+                                  <p className="text-sm">Rule was not applied to this product</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                         );
                       })}
