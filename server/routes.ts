@@ -524,22 +524,13 @@ app.delete("/api/rules/:id", async (req, res) => {
       return strField;
     };
 
-    const rulesWithNames = await db.select({
-      id: rules.id,
-      name: rules.name
-    })
-    .from(rules)
-    .where(sql`${rules.id} = ANY(${rules})`);
-
-    const ruleNames = rulesWithNames.map(r => r.name);
-    
     const content = [
-      ["ID", ...ruleNames.map(formatField)].join(delimiter),
+      ["ID", ...rules.map(formatField)].join(delimiter),
       ...allProductIds.map(productId =>
         [
           formatField(productId),
-          ...rules.map(ruleId => {
-            const result = resultsByProduct?.[productId]?.[ruleId];
+          ...rules.map(ruleName => {
+            const result = resultsByProduct?.[productId]?.[ruleName];
             const value = result
               ? `${result.status}${result.details ? ` (${result.details})` : ''}`
               : "-";
@@ -570,14 +561,7 @@ app.delete("/api/rules/:id", async (req, res) => {
     const results = await db.query.auditResults.findMany({
       where: eq(auditResults.auditId, audit.id),
       with: {
-        rule: {
-          columns: {
-            id: true,
-            name: true,
-            criticality: true,
-            category: true
-          }
-        }
+        rule: true
       },
       limit: limit,
       offset: offset,
@@ -588,21 +572,9 @@ app.delete("/api/rules/:id", async (req, res) => {
       .from(auditResults)
       .where(eq(auditResults.auditId, audit.id));
 
-    // Sanitize the results to prevent circular references
-    const sanitizedResults = results.map(result => ({
-      id: result.id,
-      auditId: result.auditId,
-      ruleId: result.ruleId,
-      productId: result.productId,
-      status: result.status,
-      details: result.details,
-      fieldName: result.fieldName,
-      rule: result.rule
-    }));
-
     res.json({
       ...audit,
-      results: sanitizedResults,
+      results,
       pagination: {
         total: totalResults[0].count,
         page,
