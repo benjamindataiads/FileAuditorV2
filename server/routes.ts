@@ -290,11 +290,24 @@ export function registerRoutes(app: Express): Server {
     });
     
     const processedContent = processedRows.join('\n');
-    const allRows = csvParse(processedContent, {
+    // Clean and normalize the content before parsing
+    const cleanContent = processedContent.split('\n').map(line => {
+      return line.split('\t').map(field => {
+        // Remove any existing quotes first
+        let cleaned = field.replace(/^"|"$/g, '');
+        // Replace any double quotes with single quotes
+        cleaned = cleaned.replace(/""/g, "'");
+        // Remove any remaining double quotes
+        cleaned = cleaned.replace(/"/g, "'");
+        // Escape any tabs or newlines
+        cleaned = cleaned.replace(/[\t\n\r]/g, ' ');
+        return cleaned;
+      }).join('\t');
+    }).join('\n');
+
+    const allRows = csvParse(cleanContent, {
       delimiter: '\t',
       columns: true,
-      quote: '"',
-      escape: '"',
       skip_empty_lines: true,
       relax_column_count: true,
       trim: true
