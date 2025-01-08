@@ -1,0 +1,61 @@
+file:///home/runner/workspace/node_modules/csv-parse/lib/api/index.js:401
+            new CsvError(
+            ^
+
+CsvError: Invalid Closing Quote: found non trimable byte after quote at line 1941
+    at Object.parse (file:///home/runner/workspace/node_modules/csv-parse/lib/api/index.js:401:13)
+    at parse (file:///home/runner/workspace/node_modules/csv-parse/lib/sync.js:16:23)
+    at <anonymous> (/home/runner/workspace/server/routes.ts:318:20)
+    at Layer.handle [as handle_request] (/home/runner/workspace/node_modules/express/lib/router/layer.js:95:5)
+    at next (/home/runner/workspace/node_modules/express/lib/router/route.js:149:13)
+    at done (/home/runner/workspace/node_modules/multer/lib/make-middleware.js:45:7)
+    at indicateDone (/home/runner/workspace/node_modules/multer/lib/make-middleware.js:49:68)
+    at Multipart.<anonymous> (/home/runner/workspace/node_modules/multer/lib/make-middleware.js:166:7)
+    at Multipart.emit (node:events:518:28)
+    at emitCloseNT (node:internal/streams/destroy:147:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:81:21) {
+  code: 'CSV_NON_TRIMABLE_CHAR_AFTER_CLOSING_QUOTE',
+  bytes: 1450244,
+  comment_lines: 0,
+  empty_lines: 0,
+  invalid_field_length: 0,
+  lines: 1941,
+  records: 1939,
+  columns: [
+    { name: 'titre' },
+    { name: 'identifiant' },
+    { name: 'prix' },
+    { name: 'prix soldé' },
+    { name: 'état' },
+    { name: 'disponibilité' },
+    { name: 'Canal' },
+    { name: 'libellé du flux' },
+    { name: 'langue' },
+    { name: 'canonical link' },
+    { name: 'catégorie' },
+    { name: 'description' },
+    { name: 'gtin' },
+    { name: 'identifiant groupe' },
+    { name: 'lien' },
+    { name: 'lien image' },
+    { name: 'lien image supplémentaire' },
+    { name: 'livraison(frais livraison:pays livraison)' },
+    { name: 'marque' },
+    { name: 'taille' },
+    { name: 'tous les clics' },
+    { name: "tranche d'âge" },
+    { name: 'étiquette personnalisée 0' },
+    { name: 'étiquette personnalisée 1' },
+    { name: 'étiquette personnalisée 2' },
+    { name: 'étiquette personnalisée 3' },
+    { name: 'étiquette personnalisée 4' }
+  ],
+  error: undefined,
+  header: false,
+  index: 11,
+  raw: undefined,
+  column: 'description',
+  quoting: true
+}
+
+Node.js v20.18.1
