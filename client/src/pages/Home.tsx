@@ -33,7 +33,23 @@ export function Home() {
       if (!response.ok) {
         throw new Error("Failed to process audit");
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Start polling for progress
+      const pollProgress = async () => {
+        const progressResponse = await fetch(`/api/audits/${data.auditId}`);
+        const auditData = await progressResponse.json();
+        return auditData.progress || 0;
+      };
+
+      let progress = 0;
+      while (progress < 100) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        progress = await pollProgress();
+        data.progress = progress;
+      }
+      
+      return data;
     },
     onSuccess: (data) => {
       if (data.auditId) {
