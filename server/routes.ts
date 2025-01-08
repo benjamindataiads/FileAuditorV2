@@ -294,13 +294,15 @@ export function registerRoutes(app: Express): Server {
     const cleanContent = processedContent.split('\n').map((line, lineIndex) => {
       try {
         const fields = line.split('\t');
-        // Process each field with minimal cleaning
+        // Process each field with proper quote handling
         return fields.map(field => {
-          // Preserve all special characters, only clean tabs since they're delimiters
-          return field
-            .replace(/\t+/g, ' ') // Only replace tabs with space since they're delimiters
-            .trimStart() // Only trim start to avoid issues with quote parsing
-            .replace(/^"|"$/g, ''); // Remove explicit quotes if present
+          const trimmed = field.trimStart();
+          // If field contains special characters, ensure proper quoting
+          if (trimmed.includes('\t') || trimmed.includes('"') || trimmed.includes('\n')) {
+            // Escape existing quotes and wrap in quotes
+            return `"${trimmed.replace(/"/g, '""')}"`;
+          }
+          return trimmed;
         }).join('\t');
       } catch (error) {
         console.error(`Error processing line ${lineIndex + 1}:`, {
