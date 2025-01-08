@@ -529,8 +529,8 @@ app.delete("/api/rules/:id", async (req, res) => {
       ...allProductIds.map(productId =>
         [
           formatField(productId),
-          ...rules.map(ruleName => {
-            const result = resultsByProduct?.[productId]?.[ruleName];
+          ...ruleNames.map(r => {
+            const result = resultsByProduct?.[productId]?.[r.id];
             const value = result
               ? `${result.status}${result.details ? ` (${result.details})` : ''}`
               : "-";
