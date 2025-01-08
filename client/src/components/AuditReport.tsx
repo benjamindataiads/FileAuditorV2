@@ -109,10 +109,7 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
       return acc;
     }, {} as Record<string, Record<string, any>>);
 
-    const response = await fetch(`/api/audits/${audit.id}/export`);
-    const content = await response.text();
-    
-    const blob = new Blob([content], { type: mimeType });
+    const blob = new Blob([allResults], { type: mimeType });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.style.display = 'none';
