@@ -293,22 +293,20 @@ export function registerRoutes(app: Express): Server {
     // Clean and normalize the content before parsing
     const cleanContent = processedContent.split('\n').map(line => {
       return line.split('\t').map(field => {
-        // Remove any existing quotes first
-        let cleaned = field.replace(/^"|"$/g, '');
-        // Replace any double quotes with single quotes
-        cleaned = cleaned.replace(/""/g, "'");
-        // Remove any remaining double quotes
-        cleaned = cleaned.replace(/"/g, "'");
-        // Escape any tabs or newlines
-        cleaned = cleaned.replace(/[\t\n\r]/g, ' ');
+        // Strip all quotes and normalize whitespace
+        let cleaned = field.trim()
+          .replace(/["']/g, '') // Remove all quotes
+          .replace(/[\t\n\r]+/g, ' ') // Replace tabs/newlines with space
+          .replace(/\s+/g, ' '); // Normalize spaces
         return cleaned;
       }).join('\t');
     }).join('\n');
 
+    // Parse the TSV content with very relaxed options
     const allRows = csvParse(cleanContent, {
       delimiter: '\t',
       columns: true,
-      quote: false,
+      quote: false, // Disable quote parsing completely
       skip_empty_lines: true,
       relax_column_count: true,
       relax_quotes: true,
@@ -316,7 +314,11 @@ export function registerRoutes(app: Express): Server {
       trim: true,
       skip_records_with_error: true,
       skip_records_with_empty_values: false,
-      bom: true
+      bom: true,
+      escape: false, // Disable escape character handling
+      ltrim: true, // Trim left spaces
+      rtrim: true, // Trim right spaces
+      comment: false // Disable comment handling
     });
     const totalRows = allRows.length;
     console.log(`Total rows to process: ${totalRows}`);
