@@ -277,6 +277,10 @@ export function registerRoutes(app: Express): Server {
     const allRows = csvParse(req.file.buffer, {
       delimiter: '\t',
       columns: true,
+      quote: '"',
+      escape: '"',
+      relax_quotes: true,
+      skip_empty_lines: true,
       skip_empty_lines: true,
       relax_column_count: true,
       relax_quotes: true,
