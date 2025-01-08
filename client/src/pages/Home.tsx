@@ -49,7 +49,7 @@ export function Home() {
       const poll = async () => {
         const progress = await pollProgress();
         uploadMutation.mutate({ progress }, { action: 'update' });
-        
+
         if (progress < 100) {
           setTimeout(poll, 1000);
         } else {
@@ -83,7 +83,7 @@ export function Home() {
 
   const handleStartAudit = () => {
     if (!uploadedFile) return;
-    
+
     setCurrentStep("processing");
     const formData = new FormData();
     formData.append("file", uploadedFile);
@@ -241,30 +241,32 @@ export function Home() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
             <div className="w-full max-w-xs space-y-4">
-              <div>
-                {console.log("Progress update:", {
+              {uploadMutation.isError ? (
+                <p className="text-sm text-destructive text-center">
+                  Error processing file. Please try again.
+                </p>
+              ) : (
+                console.log("Progress update:", {
                   progress: uploadMutation.data?.progress || 0,
                   rulesProcessed: uploadMutation.data?.rulesProcessed || 0,
                   totalRules: uploadMutation.data?.totalRules || 0,
                   errorCount: uploadMutation.data?.errorCount || 0
-                })}
-                <Progress value={uploadMutation.data?.progress || 0} className="mb-2" />
-                <p className="text-sm text-muted-foreground text-center">
-                  Processing products... {uploadMutation.data?.progress || 0}%
-                </p>
-              </div>
-              <div>
-                <Progress 
-                  value={uploadMutation.data?.rulesProcessed ? (uploadMutation.data.rulesProcessed / uploadMutation.data.totalRules) * 100 : 0} 
-                  className="mb-2" 
-                />
-                <p className="text-sm text-muted-foreground text-center">
-                  Rules processed: {uploadMutation.data?.rulesProcessed || 0}/{uploadMutation.data?.totalRules || 0}
-                  {uploadMutation.data?.errorCount > 0 && (
-                    <span className="text-destructive"> ({uploadMutation.data.errorCount} errors)</span>
-                  )}
-                </p>
-              </div>
+                })
+              )}
+              <Progress value={uploadMutation.data?.progress || 0} className="mb-2" />
+              <p className="text-sm text-muted-foreground text-center">
+                Processing products... {uploadMutation.data?.progress || 0}%
+              </p>
+              <Progress 
+                value={uploadMutation.data?.rulesProcessed ? (uploadMutation.data.rulesProcessed / uploadMutation.data.totalRules) * 100 : 0} 
+                className="mb-2" 
+              />
+              <p className="text-sm text-muted-foreground text-center">
+                Rules processed: {uploadMutation.data?.rulesProcessed || 0}/{uploadMutation.data?.totalRules || 0}
+                {uploadMutation.data?.errorCount > 0 && (
+                  <span className="text-destructive"> ({uploadMutation.data.errorCount} errors)</span>
+                )}
+              </p>
             </div>
           </CardContent>
         </Card>
