@@ -331,7 +331,7 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                       {allRules.map((ruleName) => {
                         const result = resultsByProduct?.[productId]?.[ruleName];
                         return (
-                          <TableCell key={ruleName} className="text-center">
+                          <TableCell key={ruleName} className="text-center whitespace-normal break-words max-w-[200px] p-4">
                             {result ? (
                               <TooltipProvider>
                                 <Tooltip>
@@ -361,8 +361,8 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                                     </div>
                                   </TooltipTrigger>
                                   {result.details && (
-                                    <TooltipContent className="max-w-sm">
-                                      <p className="text-sm">{result.details}</p>
+                                    <TooltipContent className="max-w-md">
+                                      <p className="text-sm whitespace-pre-line break-words">{result.details}</p>
                                     </TooltipContent>
                                   )}
                                 </Tooltip>
