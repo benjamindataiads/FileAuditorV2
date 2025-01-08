@@ -506,7 +506,7 @@ app.delete("/api/rules/:id", async (req, res) => {
     });
 
     const delimiter = "\t";
-    const rules = [...new Set(results.map(r => r.ruleId))].filter(Boolean);
+    const ruleNames = [...new Set(results.map(r => ({ id: r.ruleId, name: r.rule?.name })))].filter(r => r.id && r.name);
     const allProductIds = [...new Set(results.map(r => r.productId))];
     const resultsByProduct = results.reduce((acc, curr) => {
       acc[curr.productId] = acc[curr.productId] || {};
@@ -525,7 +525,7 @@ app.delete("/api/rules/:id", async (req, res) => {
     };
 
     const content = [
-      ["ID", ...rules.map(formatField)].join(delimiter),
+      ["ID", ...ruleNames.map(r => formatField(r.name))].join(delimiter),
       ...allProductIds.map(productId =>
         [
           formatField(productId),
