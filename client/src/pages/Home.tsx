@@ -150,6 +150,15 @@ export function Home() {
     formData.append("name", auditName);
     formData.append("rules", JSON.stringify(selectedRules));
     formData.append("columnMapping", JSON.stringify(columnMapping));
+    
+    // Debug log
+    console.log('Sending audit request with:', {
+        name: auditName,
+        rules: selectedRules,
+        mapping: columnMapping,
+        file: uploadedFile.name
+    });
+
     uploadMutation.mutate(formData);
   };
 
@@ -301,7 +310,7 @@ export function Home() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
             <p className="text-sm text-muted-foreground text-center">
-              Evaluating rules... {uploadMutation.data?.rulesProcessed || 0} of {uploadMutation.data?.totalRules || 0} rules processed
+              Processing audit... This may take up to a lot of minutes for large catalog and many rules, sorry about that - Ben.
             </p>
           </CardContent>
         </Card>

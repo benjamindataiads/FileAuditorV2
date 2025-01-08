@@ -12,46 +12,70 @@ class AuditController extends Controller
     public function process(Request $request)
     {
         try {
-            \Log::info('Starting audit process');
-            
+            \Log::info('Starting audit process', [
+                'request_data' => [
+                    'rules' => $request->input('rules'),
+                    'name' => $request->input('name'),
+                    'has_file' => $request->hasFile('file'),
+                    'has_mapping' => $request->has('columnMapping')
+                ]
+            ]);
+
             // Generate audit ID first thing
             $auditId = uniqid('audit_', true);
             \Log::info('Generated audit ID:', ['auditId' => $auditId]);
 
-            // Get basic info
+            // Get basic info and validate
             $selectedRules = json_decode($request->input('rules', '[]'));
+            if (empty($selectedRules)) {
+                throw new \Exception('No rules selected');
+            }
+
             $products = Product::all();
+            if ($products->isEmpty()) {
+                throw new \Exception('No products found');
+            }
+
             $totalProducts = $products->count();
             $rulesPerProduct = count($selectedRules);
             $totalRules = $totalProducts * $rulesPerProduct;
 
+            \Log::info('Calculated totals:', [
+                'totalProducts' => $totalProducts,
+                'rulesPerProduct' => $rulesPerProduct,
+                'totalRules' => $totalRules
+            ]);
+
             // Initialize cache
-            Cache::put("audit_progress_{$auditId}", [
+            $initialProgress = [
                 'processed_rules' => 0,
                 'total_rules' => $totalRules,
                 'status' => 'Starting...'
-            ], 3600);
+            ];
+            Cache::put("audit_progress_{$auditId}", $initialProgress, 3600);
+            \Log::info('Initialized progress cache', ['auditId' => $auditId]);
 
-            // Prepare response data
+            // Prepare response
             $responseData = [
                 'auditId' => $auditId,
                 'totalRules' => $totalRules
             ];
-            
-            \Log::info('Sending initial response:', $responseData);
 
-            // Queue the background job
+            // Queue background job
             dispatch(function () use ($auditId, $products, $selectedRules, $totalRules) {
-                \Log::info('Starting background processing', ['auditId' => $auditId]);
+                \Log::info('Starting background job', ['auditId' => $auditId]);
                 $this->processAuditInBackground($auditId, $products, $selectedRules, $totalRules);
             })->afterResponse();
 
-            // Return immediately
+            \Log::info('Sending response', $responseData);
             return response()->json($responseData);
 
         } catch (\Exception $e) {
-            \Log::error('Process error:', ['error' => $e->getMessage()]);
-            throw $e;
+            \Log::error('Process error:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
