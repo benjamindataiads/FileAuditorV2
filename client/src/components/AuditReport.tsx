@@ -332,8 +332,9 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                         const result = resultsByProduct?.[productId]?.[ruleName];
                         return (
                           <TableCell key={ruleName} className="text-center">
-                            <TooltipProvider>
-                              <Tooltip>
+                            {result ? (
+                              <TooltipProvider>
+                                <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="inline-flex items-center justify-center">
                                       <Badge
