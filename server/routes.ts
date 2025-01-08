@@ -310,9 +310,10 @@ export function registerRoutes(app: Express): Server {
       }
     }).join('\n');
 
+    let allRows;
     try {
       // Parse the TSV content with very relaxed options
-      const allRows = csvParse(cleanContent, {
+      allRows = csvParse(cleanContent, {
         delimiter: '\t',
         columns: true,
         quote: false, // Disable quote parsing completely
@@ -344,7 +345,7 @@ export function registerRoutes(app: Express): Server {
       }
       throw error;
     }
-    const totalRows = allRows.length;
+    const totalRows = allRows?.length || 0;
     console.log(`Total rows to process: ${totalRows}`);
 
     const parser = csvParse(req.file.buffer, {
