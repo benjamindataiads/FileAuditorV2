@@ -9,8 +9,53 @@ import multer from "multer";
 import { parse as csvParse } from "csv-parse/sync";
 import { parse as dateParse, isValid } from "date-fns";
 import crypto from "crypto";
+import { cleanField, cleanTsvContent, validateTsvStructure } from "./utils/csvCleaner";
 
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Add this function before registerRoutes
+async function processChunk(results: any[], auditId: number) {
+  try {
+    // Filter out invalid results
+    const validResults = results.filter(result => 
+      result && 
+      result.ruleId && 
+      result.productId && 
+      result.status
+    );
+
+    if (validResults.length === 0) {
+      return [];
+    }
+
+    // Process in batches of 100
+    const BATCH_SIZE = 100;
+    const batches = [];
+    
+    for (let i = 0; i < validResults.length; i += BATCH_SIZE) {
+      const batch = validResults.slice(i, i + BATCH_SIZE).map(result => ({
+        auditId,
+        ruleId: result.ruleId,
+        productId: result.productId,
+        status: result.status,
+        details: result.details || null,
+        fieldName: result.fieldName
+      }));
+
+      // Insert batch into database
+      const insertedResults = await db.insert(auditResults)
+        .values(batch)
+        .returning();
+      
+      batches.push(...insertedResults);
+    }
+
+    return batches;
+  } catch (error) {
+    console.error('Error processing chunk:', error);
+    throw error;
+  }
+}
 
 // Helper function to validate a single product
 async function validateProduct(product: any, selectedRules: any[], columnMapping: Record<string, string>) {
@@ -264,204 +309,169 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/audit", upload.single("file"), async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-
-    const fileHash = crypto.createHash('md5').update(req.file.buffer).digest('hex');
-    const CHUNK_SIZE = 1000; // Process 1000 records at a time
-    let processedCount = 0;
-    let currentChunk: any[] = [];
-
-    // Count total rows first
-    // Pre-process the file content to properly escape quotes in fields
-    const fileContent = req.file.buffer.toString();
-    const rows = fileContent.split('\n');
-    const processedRows = rows.map(row => {
-      const columns = row.split('\t');
-      // Process all fields that might contain quotes
-      return columns.map(field => {
-        const trimmed = field.trim();
-        // Remove any existing quotes and re-add them if needed
-        const unquoted = trimmed.replace(/^"|"$/g, '').replace(/""/g, '"');
-        return (unquoted.includes('"') || unquoted.includes('\t')) ? 
-          `"${unquoted.replace(/"/g, '""')}"` : unquoted;
-      }).join('\t');
-    });
-
-    const processedContent = processedRows.join('\n');
-    // Clean and normalize the content before parsing
-    const cleanContent = processedContent.split('\n').map((line, lineIndex) => {
-      try {
-        // Only remove BOM and control characters, preserve all other content
-        const cleaned = line.replace(/[\uFEFF\u0000-\u001F\u007F-\u009F]/g, '');
-        return cleaned;
-      } catch (error) {
-        console.error(`Error processing line ${lineIndex + 1}:`, {
-          line: line.substring(0, 100) + '...',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-        return line;
-      }
-    }).join('\n');
-
-    let allRows;
     try {
-      // Parse the TSV content with very relaxed options
-      allRows = csvParse(cleanContent, {
-        delimiter: '\t',
-        columns: true,
-        quote: '"',
-        skip_empty_lines: true,
-        relax_column_count: true,
-        escape: '"',
-        trim: false,
-        skip_records_with_error: false,
-        relax_quotes: true,
-        ltrim: true,
-        rtrim: false,
-        bom: true
-      });
-    } catch (error: any) {
-      if (error.code === 'CSV_NON_TRIMABLE_CHAR_AFTER_CLOSING_QUOTE') {
-        const lines = cleanContent.split('\n');
-        const problematicLine = lines[error.lines - 1];
-        const fields = problematicLine.split('\t');
-        const productId = fields[1]; // 'identifiant' is the second column
-        console.error('CSV parsing error:', {
-          error: error.code,
-          line: error.lines,
-          productId: productId,
-          description: fields[11] // Description column
+      const fileContent = req.file.buffer.toString('utf-8');
+      
+      // Validate TSV structure first
+      const validation = validateTsvStructure(fileContent);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          error: 'Invalid file structure',
+          details: validation.error
         });
       }
-      throw error;
-    }
-    const totalRows = allRows?.length || 0;
-    console.log(`Total rows to process: ${totalRows}`);
 
-    const parser = csvParse(req.file.buffer, {
-      delimiter: '\t',
-      columns: true,
-      skip_empty_lines: true,
-      relax_column_count: true,
-      relax_quotes: true,
-      trim: true
-    });
+      // Clean the content before parsing
+      const cleanContent = cleanTsvContent(fileContent);
 
-    const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
-    const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
+      let allRows;
+      try {
+        // Parse with more robust options
+        allRows = csvParse(cleanContent, {
+          delimiter: '\t',
+          columns: true,
+          quote: '"',
+          escape: '\\',
+          skip_empty_lines: true,
+          relax_column_count: true,
+          relax_quotes: true,
+          trim: true,
+          skip_records_with_error: true,
+          relaxColumnCount: true,
+          relaxQuotes: true,
+          bom: true,
+          on_record: (record, context) => {
+            // Additional per-record cleaning
+            Object.keys(record).forEach(key => {
+              if (typeof record[key] === 'string') {
+                try {
+                  record[key] = cleanField(record[key]);
+                } catch (error) {
+                  console.warn('Error cleaning record field:', { key, error });
+                }
+              }
+            });
+            return record;
+          },
+          on_error: (error) => {
+            console.warn('CSV parsing warning:', {
+              error: error.code,
+              line: error.lines,
+              field: error.column,
+              message: error.message
+            });
+            return true;
+          }
+        });
+      } catch (error: any) {
+        // If we still get an error, try to recover the data
+        if (error.code === 'CSV_NON_TRIMABLE_CHAR_AFTER_CLOSING_QUOTE') {
+          console.warn('Attempting to recover from CSV parsing error');
+          
+          // Split into lines and process each line individually
+          const lines = cleanContent.split('\n');
+          const headers = lines[0].split('\t');
+          
+          allRows = lines.slice(1).map((line, index) => {
+            try {
+              const fields = line.split('\t').map(cleanField);
+              return headers.reduce((acc, header, i) => {
+                acc[header] = fields[i] || '';
+                return acc;
+              }, {} as Record<string, string>);
+            } catch (lineError) {
+              console.warn('Error processing line:', { lineNumber: index + 1, error: lineError });
+              return null;
+            }
+          }).filter(row => row !== null);
+        } else {
+          throw error;
+        }
+      }
 
+      const totalRows = allRows?.length || 0;
+      console.log(`Successfully parsed ${totalRows} rows`);
 
-    // Create audit record
-    const audit = await db.insert(audits).values({
-      name: req.body.name || "Unnamed Audit",
-      fileHash,
-      totalProducts: 0, // Initialize to 0, will be updated later
-      compliantProducts: 0,
-      warningProducts: 0,
-      criticalProducts: 0,
-    }).returning();
+      const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
+      const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
 
-    const auditId = audit[0].id;
+      // Create audit record
+      const audit = await db.insert(audits).values({
+        name: req.body.name || "Unnamed Audit",
+        fileHash: crypto.createHash('md5').update(req.file.buffer).digest('hex'),
+        totalProducts: totalRows,
+        compliantProducts: 0,
+        warningProducts: 0,
+        criticalProducts: 0,
+      }).returning();
 
-    // Load all rules at once
-    const rules = await loadRules(selectedRules);
+      const auditId = audit[0].id;
 
-    // Update total rules count
-    await db.update(audits)
-      .set({ totalRules: rules.length * totalRows })
-      .where(eq(audits.id, auditId));
+      // Load all rules at once
+      const rules = await loadRules(selectedRules);
 
-    let processedResults = 0;
-
-    for await (const record of parser) {
-      currentChunk.push(record);
-      processedCount += 1;
-
-      // Update progress for each record before processing
-      const progress = Math.floor((processedCount / totalRows) * 100);
-      const totalRulesExpected = totalRows * rules.length;
+      // Update total rules count
       await db.update(audits)
-        .set({ 
-          progress: progress,
-          totalProducts: totalRows
+        .set({ totalRules: rules.length * totalRows })
+        .where(eq(audits.id, auditId));
+
+      let processedResults = 0;
+
+      // Process rows in batches
+      const BATCH_SIZE = 100;
+      for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
+        const batch = allRows.slice(i, i + BATCH_SIZE);
+        const batchResults = [];
+        
+        for (const record of batch) {
+          const productResults = await validateProduct(record, rules, columnMapping);
+          batchResults.push(...productResults);
+        }
+
+        const results = await processChunk(batchResults, auditId);
+        processedResults += results.length;
+
+        const progress = Math.floor((processedResults / (rules.length * totalRows)) * 100);
+        console.log(`Progress: ${progress}% (${processedResults}/${rules.length * totalRows} rules processed)`);
+        
+        await db.update(audits)
+          .set({ 
+            progress: progress,
+            rulesProcessed: processedResults,
+          })
+          .where(eq(audits.id, auditId));
+      }
+
+      // Update final audit counts
+      const auditResultsData = await db.query.auditResults.findMany({
+        where: eq(auditResults.auditId, auditId)
+      });
+
+      const counts = {
+        compliant: auditResultsData.filter(r => r.status === "ok").length,
+        warning: auditResultsData.filter(r => r.status === "warning").length,
+        critical: auditResultsData.filter(r => r.status === "critical").length,
+      };
+
+      await db.update(audits)
+        .set({
+          compliantProducts: counts.compliant,
+          warningProducts: counts.warning,
+          criticalProducts: counts.critical,
+          progress: 100,
         })
         .where(eq(audits.id, auditId));
 
-      if (currentChunk.length >= CHUNK_SIZE) {
-        const results = await processChunk(currentChunk, rules, columnMapping, auditId);
-
-        // Track actual rules processed based on results
-        const actualRulesProcessed = results.length;
-        processedResults += actualRulesProcessed;
-
-        const rulesProgress = Math.floor((processedResults / totalRulesExpected) * 100);
-        const errorCount = results.filter(r => r.error).length;
-
-        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} unique products, ${processedResults}/${totalRulesExpected} rules processed)`);
-        await db.update(audits)
-          .set({ 
-            totalProducts: totalRows,
-            progress: rulesProgress,
-            rulesProcessed: processedResults,
-            totalRules: totalRulesExpected,
-            errorCount: errorCount
-          })
-          .where(eq(audits.id, auditId));
-
-        // Clear chunk from memory
-        currentChunk = [];
-      }
+      res.json({ auditId });
+    } catch (error: any) {
+      console.error('Audit processing error:', error);
+      res.status(500).json({
+        error: 'Failed to process audit',
+        details: error.message
+      });
     }
-
-    // Process remaining records
-    if (currentChunk.length > 0) {
-      await processChunk(currentChunk, rules, columnMapping, auditId);
-      processedCount += currentChunk.length;
-    }
-
-    async function processChunk(chunk: any[], rules: any[], columnMapping: any, auditId: number) {
-      const results = await Promise.all(
-        chunk.map(product => validateProduct(product, rules, columnMapping))
-      );
-
-      const flatResults = results.flat().filter(r => r.ruleId);
-      if (flatResults.length > 0) {
-        await insertResultsBatch(flatResults, auditId);
-      }
-
-      return results;
-    }
-
-    // Update audit counts
-    const auditResultsData = await db.query.auditResults.findMany({
-      where: eq(auditResults.auditId, auditId)
-    });
-
-    console.log('Audit results after processing:', {
-      auditId,
-      totalResults: auditResultsData.length,
-      results: auditResultsData.slice(0, 5) // Log first 5 results for debugging
-    });
-
-    const counts = {
-      compliant: auditResultsData.filter(r => r.status === "ok").length,
-      warning: auditResultsData.filter(r => r.status === "warning").length,
-      critical: auditResultsData.filter(r => r.status === "critical").length,
-    };
-
-    await db.update(audits)
-      .set({
-        compliantProducts: counts.compliant,
-        warningProducts: counts.warning,
-        criticalProducts: counts.critical,
-        totalProducts: processedCount, // Update totalProducts after processing
-      })
-      .where(eq(audits.id, auditId));
-
-    res.json({ auditId });
   });
+
   app.delete("/api/audits/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);

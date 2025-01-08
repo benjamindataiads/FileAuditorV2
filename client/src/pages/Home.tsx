@@ -12,6 +12,21 @@ import type { Rule } from "@/lib/types";
 
 type Step = "upload" | "mapping" | "rules" | "processing";
 
+interface AuditProgress {
+  progress: number;
+  rulesProcessed: number;
+  totalRules: number;
+  errorCount: number;
+}
+
+// First, update the mutation type to handle both initial and progress updates
+type MutationData = {
+  auditId?: string;
+  rulesProcessed?: number;
+  totalRules?: number;
+  progress?: number;
+}
+
 export function Home() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [selectedRules, setSelectedRules] = useState<number[]>([]);
@@ -24,47 +39,91 @@ export function Home() {
     queryKey: ["/api/rules"],
   });
 
-  const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
+  const uploadMutation = useMutation<
+    MutationData,
+    Error,
+    FormData | { type: 'UPDATE_PROGRESS'; progress: AuditProgress }
+  >({
+    mutationFn: async (formData) => {
+      // Handle progress updates
+      if ('type' in formData && formData.type === 'UPDATE_PROGRESS') {
+        return formData.progress;
+      }
+
+      console.log('Starting audit upload...');
+
+      // Handle initial file upload
       const response = await fetch("/api/audit", {
         method: "POST",
         body: formData,
       });
+
+      console.log('Got response:', {
+        status: response.status,
+        statusText: response.statusText
+      });
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to process audit");
       }
-      const initialData = await response.json();
-      return initialData;
-    },
-    onSuccess: async (data) => {
-      if (!data.auditId) return;
 
-      // Start polling for progress
-      const pollProgress = async () => {
-        const progressResponse = await fetch(`/api/audits/${data.auditId}`);
-        const auditData = await progressResponse.json();
-        return auditData.progress || 0;
+      const data = await response.json();
+      console.log('Initial audit response:', data);
+
+      if (!data.auditId) {
+        console.error('No auditId in response:', data);
+        throw new Error('No audit ID received');
+      }
+
+      // Start polling immediately
+      console.log('Starting polling for:', data.auditId);
+      startPolling(data.auditId);
+
+      return {
+        auditId: data.auditId,
+        rulesProcessed: 0,
+        totalRules: data.totalRules || 0,
+        progress: 0
       };
-
-      const poll = async () => {
-        const progress = await pollProgress();
-        uploadMutation.mutate({ progress }, { action: 'update' });
-
-        if (progress < 100) {
-          setTimeout(poll, 1000);
-        } else {
-          setLocation(`/audit/${data.auditId}`);
-        }
-      };
-
-      poll();
-    },
-    onError: (error) => {
-      console.error("Audit processing failed:", error);
-      setCurrentStep("rules"); // Go back to rules selection on error
-    },
+    }
   });
+
+  // Move polling logic outside the mutation
+  const startPolling = async (auditId: string) => {
+    const pollProgress = async () => {
+      try {
+        const progressResponse = await fetch(`/api/audits/${auditId}`);
+        if (!progressResponse.ok) {
+          throw new Error('Failed to fetch progress');
+        }
+        const progressData = await progressResponse.json();
+        console.log('Progress data received:', progressData);
+        
+        // Update mutation data with new progress
+        uploadMutation.mutate(
+          { 
+            type: 'UPDATE_PROGRESS', 
+            progress: progressData 
+          } as any,
+          { action: 'update' }
+        );
+
+        // Continue polling if not complete
+        if (progressData.progress < 100) {
+          setTimeout(() => pollProgress(), 5000);
+        } else {
+          setLocation(`/audit/${auditId}`);
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+        uploadMutation.setError(error as Error);
+      }
+    };
+
+    // Start the polling
+    pollProgress();
+  };
 
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
@@ -237,38 +296,13 @@ export function Home() {
       {currentStep === "processing" && (
         <Card>
           <CardHeader>
-            <CardTitle>Step 3: Processing Audit</CardTitle>
+            <CardTitle>Processing Audit</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
-            <div className="w-full max-w-xs space-y-4">
-              {uploadMutation.isError ? (
-                <p className="text-sm text-destructive text-center">
-                  Error processing file. Please try again.
-                </p>
-              ) : (
-                console.log("Progress update:", {
-                  progress: uploadMutation.data?.progress || 0,
-                  rulesProcessed: uploadMutation.data?.rulesProcessed || 0,
-                  totalRules: uploadMutation.data?.totalRules || 0,
-                  errorCount: uploadMutation.data?.errorCount || 0
-                })
-              )}
-              <Progress value={uploadMutation.data?.progress || 0} className="mb-2" />
-              <p className="text-sm text-muted-foreground text-center">
-                Processing products... {uploadMutation.data?.progress || 0}%
-              </p>
-              <Progress 
-                value={uploadMutation.data?.rulesProcessed ? (uploadMutation.data.rulesProcessed / uploadMutation.data.totalRules) * 100 : 0} 
-                className="mb-2" 
-              />
-              <p className="text-sm text-muted-foreground text-center">
-                Rules processed: {uploadMutation.data?.rulesProcessed || 0}/{uploadMutation.data?.totalRules || 0}
-                {uploadMutation.data?.errorCount > 0 && (
-                  <span className="text-destructive"> ({uploadMutation.data.errorCount} errors)</span>
-                )}
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              Evaluating rules... {uploadMutation.data?.rulesProcessed || 0} of {uploadMutation.data?.totalRules || 0} rules processed
+            </p>
           </CardContent>
         </Card>
       )}
