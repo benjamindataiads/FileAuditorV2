@@ -242,6 +242,12 @@ export function Home() {
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
             <div className="w-full max-w-xs space-y-4">
               <div>
+                {console.log("Progress update:", {
+                  progress: uploadMutation.data?.progress || 0,
+                  rulesProcessed: uploadMutation.data?.rulesProcessed || 0,
+                  totalRules: uploadMutation.data?.totalRules || 0,
+                  errorCount: uploadMutation.data?.errorCount || 0
+                })}
                 <Progress value={uploadMutation.data?.progress || 0} className="mb-2" />
                 <p className="text-sm text-muted-foreground text-center">
                   Processing products... {uploadMutation.data?.progress || 0}%
