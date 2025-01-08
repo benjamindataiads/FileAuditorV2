@@ -323,48 +323,57 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {audit.results?.slice(startIndex, endIndex).map((result) => (
-                    <TableRow key={`${result.productId}-${result.rule?.name}`}>
-                      <TableCell className="font-medium">{result.productId}</TableCell>
-                      <TableCell>{result.rule?.name}</TableCell>
-                      <TableCell className="text-center">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="inline-flex items-center justify-center">
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    result.status === "ok"
-                                      ? "bg-green-100 text-green-800"
-                                      : result.status === "warning"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-red-100 text-red-800"
-                                  }
-                                >
-                                  {result.status === "ok" && (
-                                    <CheckCircle className="h-4 w-4 mr-1" />
+                  {paginatedProductIds.map((productId) => (
+                    allRules.map((ruleName) => {
+                      const result = resultsByProduct?.[productId]?.[ruleName];
+                      return (
+                        <TableRow key={`${productId}-${ruleName}`}>
+                          <TableCell className="font-medium">{productId}</TableCell>
+                          <TableCell>{ruleName}</TableCell>
+                          <TableCell className="text-center">
+                            {result ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="inline-flex items-center justify-center">
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          result.status === "ok"
+                                            ? "bg-green-100 text-green-800"
+                                            : result.status === "warning"
+                                            ? "bg-yellow-100 text-yellow-800"
+                                            : "bg-red-100 text-red-800"
+                                        }
+                                      >
+                                        {result.status === "ok" && (
+                                          <CheckCircle className="h-4 w-4 mr-1" />
+                                        )}
+                                        {result.status === "warning" && (
+                                          <AlertTriangle className="h-4 w-4 mr-1" />
+                                        )}
+                                        {result.status === "critical" && (
+                                          <XCircle className="h-4 w-4 mr-1" />
+                                        )}
+                                        {result.status}
+                                      </Badge>
+                                    </div>
+                                  </TooltipTrigger>
+                                  {result.details && (
+                                    <TooltipContent className="max-w-sm">
+                                      <p className="text-sm">{result.details}</p>
+                                    </TooltipContent>
                                   )}
-                                  {result.status === "warning" && (
-                                    <AlertTriangle className="h-4 w-4 mr-1" />
-                                  )}
-                                  {result.status === "critical" && (
-                                    <XCircle className="h-4 w-4 mr-1" />
-                                  )}
-                                  {result.status}
-                                </Badge>
-                              </div>
-                            </TooltipTrigger>
-                            {result.details && (
-                              <TooltipContent className="max-w-sm">
-                                <p className="text-sm">{result.details}</p>
-                              </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              "-"
                             )}
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                      <TableCell>{result.details || "-"}</TableCell>
-                    </TableRow>
+                          </TableCell>
+                          <TableCell>{result?.details || "-"}</TableCell>
+                        </TableRow>
+                      );
+                    })
                   ))}
                   {!audit.results?.length && (
                     <TableRow>
