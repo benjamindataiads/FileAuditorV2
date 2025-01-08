@@ -317,20 +317,21 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-bold">Product ID</TableHead>
-                    <TableHead className="font-bold">Rule</TableHead>
-                    <TableHead className="font-bold">Status</TableHead>
-                    <TableHead className="font-bold">Details</TableHead>
+                    {allRules.map((ruleName) => (
+                      <TableHead key={ruleName} className="font-bold text-center">
+                        {ruleName}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedProductIds.map((productId) => (
-                    allRules.map((ruleName) => {
-                      const result = resultsByProduct?.[productId]?.[ruleName];
-                      return (
-                        <TableRow key={`${productId}-${ruleName}`}>
-                          <TableCell className="font-medium">{productId}</TableCell>
-                          <TableCell>{ruleName}</TableCell>
-                          <TableCell className="text-center">
+                    <TableRow key={productId}>
+                      <TableCell className="font-medium">{productId}</TableCell>
+                      {allRules.map((ruleName) => {
+                        const result = resultsByProduct?.[productId]?.[ruleName];
+                        return (
+                          <TableCell key={ruleName} className="text-center">
                             {result ? (
                               <TooltipProvider>
                                 <Tooltip>
@@ -370,10 +371,9 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                               "-"
                             )}
                           </TableCell>
-                          <TableCell>{result?.details || "-"}</TableCell>
-                        </TableRow>
-                      );
-                    })
+                        );
+                      })}
+                    </TableRow>
                   ))}
                   {!audit.results?.length && (
                     <TableRow>
