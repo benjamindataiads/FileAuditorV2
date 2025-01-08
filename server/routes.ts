@@ -274,19 +274,19 @@ export function registerRoutes(app: Express): Server {
     let currentChunk: any[] = [];
 
     // Count total rows first
-    // Pre-process the file content to properly escape quotes in description field
+    // Pre-process the file content to properly escape quotes in fields
     const fileContent = req.file.buffer.toString();
     const rows = fileContent.split('\n');
     const processedRows = rows.map(row => {
       const columns = row.split('\t');
-      // Description is the 12th column (index 11)
-      if (columns.length > 11) {
-        columns[11] = columns[11].replace(/"/g, '""');
-        if (columns[11].includes('"') || columns[11].includes('\t')) {
-          columns[11] = `"${columns[11]}"`;
-        }
-      }
-      return columns.join('\t');
+      // Process all fields that might contain quotes
+      return columns.map(field => {
+        const trimmed = field.trim();
+        // Remove any existing quotes and re-add them if needed
+        const unquoted = trimmed.replace(/^"|"$/g, '').replace(/""/g, '"');
+        return (unquoted.includes('"') || unquoted.includes('\t')) ? 
+          `"${unquoted.replace(/"/g, '""')}"` : unquoted;
+      }).join('\t');
     });
     
     const processedContent = processedRows.join('\n');
