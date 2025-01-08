@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { eq, sql, asc } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@db";
 import { rules, audits, auditResults } from "@db/schema";
 import type { FieldMapping } from "../client/src/lib/fieldMappings";
@@ -524,14 +524,12 @@ app.delete("/api/rules/:id", async (req, res) => {
       return strField;
     };
 
-    // Get rule names from the database
-    const rulesWithNames = await db.query.rules.findMany({
-      columns: {
-        id: true,
-        name: true
-      },
-      where: (rules, { inArray }) => inArray(rules.id, rules)
-    });
+    const rulesWithNames = await db.select({
+      id: rules.id,
+      name: rules.name
+    })
+    .from(rules)
+    .where(sql`${rules.id} = ANY(${rules})`);
 
     const ruleNames = rulesWithNames.map(r => r.name);
     
@@ -569,40 +567,42 @@ app.delete("/api/rules/:id", async (req, res) => {
       return res.status(404).json({ message: "Audit not found" });
     }
 
-    const results = await db.select({
-      id: auditResults.id,
-      auditId: auditResults.auditId,
-      ruleId: auditResults.ruleId,
-      productId: auditResults.productId,
-      status: auditResults.status,
-      details: auditResults.details,
-      ruleName: rules.name,
-      ruleCriticality: rules.criticality
-    })
-    .from(auditResults)
-    .leftJoin(rules, eq(auditResults.ruleId, rules.id))
-    .where(eq(auditResults.auditId, audit.id))
-    .limit(limit)
-    .offset(offset)
-    .orderBy(asc(auditResults.productId));
-
-    // Transform results to match expected format
-    const transformedResults = results.map(r => ({
-      ...r,
-      rule: {
-        id: r.ruleId,
-        name: r.ruleName,
-        criticality: r.ruleCriticality
-      }
-    }));
+    const results = await db.query.auditResults.findMany({
+      where: eq(auditResults.auditId, audit.id),
+      with: {
+        rule: {
+          columns: {
+            id: true,
+            name: true,
+            criticality: true,
+            category: true
+          }
+        }
+      },
+      limit: limit,
+      offset: offset,
+      orderBy: (results, { asc }) => [asc(results.productId)]
+    });
 
     const totalResults = await db.select({ count: sql`count(*)` })
       .from(auditResults)
       .where(eq(auditResults.auditId, audit.id));
 
+    // Sanitize the results to prevent circular references
+    const sanitizedResults = results.map(result => ({
+      id: result.id,
+      auditId: result.auditId,
+      ruleId: result.ruleId,
+      productId: result.productId,
+      status: result.status,
+      details: result.details,
+      fieldName: result.fieldName,
+      rule: result.rule
+    }));
+
     res.json({
       ...audit,
-      results,
+      results: sanitizedResults,
       pagination: {
         total: totalResults[0].count,
         page,
