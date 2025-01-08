@@ -308,11 +308,15 @@ export function registerRoutes(app: Express): Server {
     const allRows = csvParse(cleanContent, {
       delimiter: '\t',
       columns: true,
-      quote: false, // Disable quote parsing
+      quote: false,
       skip_empty_lines: true,
       relax_column_count: true,
       relax_quotes: true,
-      trim: true
+      relax: true,
+      trim: true,
+      skip_records_with_error: true,
+      skip_records_with_empty_values: false,
+      bom: true
     });
     const totalRows = allRows.length;
     console.log(`Total rows to process: ${totalRows}`);
