@@ -293,31 +293,9 @@ export function registerRoutes(app: Express): Server {
     // Clean and normalize the content before parsing
     const cleanContent = processedContent.split('\n').map((line, lineIndex) => {
       try {
-        const fields = line.split('\t');
-        // Process each field with enhanced quote handling
-        return fields.map(field => {
-          // Remove BOM and control characters
-          let cleaned = field.replace(/[\uFEFF\u0000-\u001F\u007F-\u009F]/g, '');
-          
-          // Trim only leading whitespace to preserve intentional trailing spaces
-          cleaned = cleaned.trimStart();
-          
-          // Handle fields with special characters
-          if (cleaned.includes('\t') || cleaned.includes('"') || cleaned.includes('\n') || cleaned.includes(',')) {
-            // First unescape any double quotes
-            cleaned = cleaned.replace(/""/g, '"');
-            // Remove any existing surrounding quotes
-            cleaned = cleaned.replace(/^"(.*)"$/, '$1');
-            // Escape quotes within the field
-            cleaned = cleaned.replace(/"/g, '""');
-            // Wrap in quotes
-            cleaned = `"${cleaned}"`;
-            // Remove any trailing characters after the closing quote
-            cleaned = cleaned.replace(/"([^"]*)$/, '"');
-            return cleaned;
-          }
-          return cleaned;
-        }).join('\t');
+        // Only remove BOM and control characters, preserve all other content
+        const cleaned = line.replace(/[\uFEFF\u0000-\u001F\u007F-\u009F]/g, '');
+        return cleaned;
       } catch (error) {
         console.error(`Error processing line ${lineIndex + 1}:`, {
           line: line.substring(0, 100) + '...',
@@ -333,19 +311,13 @@ export function registerRoutes(app: Express): Server {
       allRows = csvParse(cleanContent, {
         delimiter: '\t',
         columns: true,
-        quote: false, // Disable quote parsing completely
+        quote: '"',
         skip_empty_lines: true,
         relax_column_count: true,
-        relax_quotes: true,
-        relax: true,
-        trim: true,
+        escape: '"',
+        trim: false,
         skip_records_with_error: true,
-        skip_records_with_empty_values: false,
-        bom: true,
-        escape: false, // Disable escape character handling
-        ltrim: true, // Trim left spaces
-        rtrim: true, // Trim right spaces
-        comment: false // Disable comment handling
+        bom: true
       });
     } catch (error: any) {
       if (error.code === 'CSV_NON_TRIMABLE_CHAR_AFTER_CLOSING_QUOTE') {
