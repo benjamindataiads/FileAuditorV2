@@ -293,23 +293,13 @@ export function registerRoutes(app: Express): Server {
     // Clean and normalize the content before parsing
     const cleanContent = processedContent.split('\n').map((line, lineIndex) => {
       try {
-        // Log the problematic line if we're at line 1941
-        if (lineIndex === 1940) { // 0-based index
-          const fields = line.split('\t');
-          console.log('Processing problematic line 1941:', {
-            description: fields[11], // description column
-            containsQuotes: fields[11].includes('"'),
-            containsPercent: fields[11].includes('%'),
-            spaces: fields[11].match(/\s+/g)?.length || 0
-          });
-        }
-        
-        return line.split('\t').map((field, columnIndex) => {
-          // Preserve spaces and special characters, just clean tabs/newlines
-          let cleaned = field
+        const fields = line.split('\t');
+        // Process each field with minimal cleaning
+        return fields.map(field => {
+          // Only clean essential characters while preserving spaces and special chars
+          return field
             .replace(/[\t\n\r]+/g, ' ') // Replace tabs/newlines with single space
             .trim(); // Just trim start/end
-          return cleaned;
         }).join('\t');
       } catch (error) {
         console.error(`Error processing line ${lineIndex + 1}:`, {
