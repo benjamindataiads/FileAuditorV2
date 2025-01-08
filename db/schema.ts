@@ -33,6 +33,9 @@ export const audits = pgTable("audits", {
   warningProducts: integer("warning_products").notNull(),
   criticalProducts: integer("critical_products").notNull(),
   progress: integer("progress").notNull().default(0),
+  rulesProcessed: integer("rules_processed").notNull().default(0),
+  totalRules: integer("total_rules").notNull().default(0),
+  errorCount: integer("error_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

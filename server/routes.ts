@@ -306,6 +306,11 @@ export function registerRoutes(app: Express): Server {
 
     // Load all rules at once
     const rules = await loadRules(selectedRules);
+    
+    // Update total rules count
+    await db.update(audits)
+      .set({ totalRules: rules.length * totalRows })
+      .where(eq(audits.id, auditId));
 
     let processedResults = 0;
 
@@ -319,11 +324,16 @@ export function registerRoutes(app: Express): Server {
 
         // Update progress based on processed products
         const progress = Math.floor((processedCount / totalRows) * 100);
-        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} products)`);
+        const rulesProcessed = processedCount * rules.length;
+        const errorCount = results.filter(r => r.error).length;
+        
+        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} products, ${rulesProcessed} rules processed)`);
         await db.update(audits)
           .set({ 
             totalProducts: totalRows,
-            progress: progress 
+            progress: progress,
+            rulesProcessed: rulesProcessed,
+            errorCount: errorCount
           })
           .where(eq(audits.id, auditId));
 

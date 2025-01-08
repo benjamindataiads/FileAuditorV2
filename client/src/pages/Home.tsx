@@ -243,11 +243,25 @@ export function Home() {
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin mb-4" />
-            <div className="w-full max-w-xs">
-              <Progress value={uploadMutation.data?.progress || 0} className="mb-2" />
-              <p className="text-sm text-muted-foreground text-center">
-                Processing your product feed... {uploadMutation.data?.progress || 0}%
-              </p>
+            <div className="w-full max-w-xs space-y-4">
+              <div>
+                <Progress value={uploadMutation.data?.progress || 0} className="mb-2" />
+                <p className="text-sm text-muted-foreground text-center">
+                  Processing products... {uploadMutation.data?.progress || 0}%
+                </p>
+              </div>
+              <div>
+                <Progress 
+                  value={uploadMutation.data?.rulesProcessed ? (uploadMutation.data.rulesProcessed / uploadMutation.data.totalRules) * 100 : 0} 
+                  className="mb-2" 
+                />
+                <p className="text-sm text-muted-foreground text-center">
+                  Rules processed: {uploadMutation.data?.rulesProcessed || 0}/{uploadMutation.data?.totalRules || 0}
+                  {uploadMutation.data?.errorCount > 0 && (
+                    <span className="text-destructive"> ({uploadMutation.data.errorCount} errors)</span>
+                  )}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
