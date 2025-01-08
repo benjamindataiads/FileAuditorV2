@@ -322,17 +322,20 @@ export function registerRoutes(app: Express): Server {
         processedCount += currentChunk.length;
         processedResults += results.length;
 
-        // Update progress based on processed products
+        // Calculate progress based on both products and rules
         const progress = Math.floor((processedCount / totalRows) * 100);
         const rulesProcessed = processedCount * rules.length;
+        const totalRulesExpected = totalRows * rules.length;
+        const rulesProgress = Math.floor((rulesProcessed / totalRulesExpected) * 100);
         const errorCount = results.filter(r => r.error).length;
         
-        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} products, ${rulesProcessed} rules processed)`);
+        console.log(`Progress: ${rulesProgress}% (${processedCount}/${totalRows} products, ${rulesProcessed}/${totalRulesExpected} rules processed)`);
         await db.update(audits)
           .set({ 
             totalProducts: totalRows,
-            progress: progress,
+            progress: rulesProgress,
             rulesProcessed: rulesProcessed,
+            totalRules: totalRulesExpected,
             errorCount: errorCount
           })
           .where(eq(audits.id, auditId));
