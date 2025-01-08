@@ -272,7 +272,7 @@ export function registerRoutes(app: Express): Server {
     const CHUNK_SIZE = 1000; // Process 1000 records at a time
     let processedCount = 0;
     let currentChunk: any[] = [];
-    
+
     // Count total rows first
     const allRows = csvParse(req.file.buffer, {
       delimiter: '\t',
@@ -306,7 +306,7 @@ export function registerRoutes(app: Express): Server {
 
     // Load all rules at once
     const rules = await loadRules(selectedRules);
-    
+
     // Update total rules count
     await db.update(audits)
       .set({ totalRules: rules.length * totalRows })
@@ -319,24 +319,26 @@ export function registerRoutes(app: Express): Server {
 
       if (currentChunk.length >= CHUNK_SIZE) {
         const results = await processChunk(currentChunk, rules, columnMapping, auditId);
-        // Get unique product IDs from results
-        const processedProductIds = new Set(results.flat().map(r => r.productId));
-        processedCount = processedProductIds.size;
-        processedResults += results.length;
+        // Count unique products that have been processed
+        const uniqueProductIds = new Set(results.map(r => r.productId));
+        processedCount = uniqueProductIds.size;
 
-        // Calculate progress based on unique products processed
+        // Track actual rules processed based on results
+        const actualRulesProcessed = results.length;
+        processedResults += actualRulesProcessed;
+
+        // Calculate progress based on actual processed items
         const progress = Math.floor((processedCount / totalRows) * 100);
-        const rulesProcessed = results.flat().length;
         const totalRulesExpected = totalRows * rules.length;
-        const rulesProgress = Math.floor((rulesProcessed / totalRulesExpected) * 100);
-        const errorCount = results.flat().filter(r => r.error).length;
-        
-        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} unique products, ${rulesProcessed}/${totalRulesExpected} rules processed)`);
+        const rulesProgress = Math.floor((processedResults / totalRulesExpected) * 100);
+        const errorCount = results.filter(r => r.error).length;
+
+        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} unique products, ${processedResults}/${totalRulesExpected} rules processed)`);
         await db.update(audits)
           .set({ 
             totalProducts: totalRows,
             progress: rulesProgress,
-            rulesProcessed: rulesProcessed,
+            rulesProcessed: processedResults,
             totalRules: totalRulesExpected,
             errorCount: errorCount
           })
@@ -363,7 +365,7 @@ export function registerRoutes(app: Express): Server {
         await insertResultsBatch(flatResults, auditId);
       }
 
-      return flatResults;
+      return results;
     }
 
     // Update audit counts
