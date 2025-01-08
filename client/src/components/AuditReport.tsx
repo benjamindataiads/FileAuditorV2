@@ -377,12 +377,14 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                                         className="bg-gray-100 text-gray-800"
                                       >
                                         <MinusCircle className="h-4 w-4 mr-1" />
-                                        not checked
+                                        {result?.error ? 'error' : 'not checked'}
                                       </Badge>
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent className="max-w-sm">
-                                    <p className="text-sm">Rule was not applied to this product</p>
+                                    <p className="text-sm">
+                                      {result?.error || 'Rule was not applied to this product'}
+                                    </p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
