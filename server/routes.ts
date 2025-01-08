@@ -576,11 +576,8 @@ app.delete("/api/rules/:id", async (req, res) => {
       productId: auditResults.productId,
       status: auditResults.status,
       details: auditResults.details,
-      rule: {
-        id: rules.id,
-        name: rules.name,
-        criticality: rules.criticality
-      }
+      ruleName: rules.name,
+      ruleCriticality: rules.criticality
     })
     .from(auditResults)
     .leftJoin(rules, eq(auditResults.ruleId, rules.id))
@@ -588,6 +585,16 @@ app.delete("/api/rules/:id", async (req, res) => {
     .limit(limit)
     .offset(offset)
     .orderBy(asc(auditResults.productId));
+
+    // Transform results to match expected format
+    const transformedResults = results.map(r => ({
+      ...r,
+      rule: {
+        id: r.ruleId,
+        name: r.ruleName,
+        criticality: r.ruleCriticality
+      }
+    }));
 
     const totalResults = await db.select({ count: sql`count(*)` })
       .from(auditResults)
