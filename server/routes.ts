@@ -288,7 +288,7 @@ export function registerRoutes(app: Express): Server {
           `"${unquoted.replace(/"/g, '""')}"` : unquoted;
       }).join('\t');
     });
-    
+
     const processedContent = processedRows.join('\n');
     // Clean and normalize the content before parsing
     const cleanContent = processedContent.split('\n').map(line => {
@@ -308,8 +308,10 @@ export function registerRoutes(app: Express): Server {
     const allRows = csvParse(cleanContent, {
       delimiter: '\t',
       columns: true,
+      quote: false, // Disable quote parsing
       skip_empty_lines: true,
       relax_column_count: true,
+      relax_quotes: true,
       trim: true
     });
     const totalRows = allRows.length;
