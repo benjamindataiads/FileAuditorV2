@@ -273,12 +273,14 @@ export function registerRoutes(app: Express): Server {
     let processedCount = 0;
     let currentChunk: any[] = [];
     
-    // Get total number of rows
-    const totalRows = csvParse(req.file.buffer, {
+    // Count total rows first
+    const allRows = csvParse(req.file.buffer, {
       delimiter: '\t',
       columns: true,
       skip_empty_lines: true,
-    }).length;
+    });
+    const totalRows = allRows.length;
+    console.log(`Total rows to process: ${totalRows}`);
 
     const parser = csvParse(req.file.buffer, {
       delimiter: '\t',
@@ -315,11 +317,12 @@ export function registerRoutes(app: Express): Server {
         processedCount += currentChunk.length;
         processedResults += results.length;
 
-        // Update progress in audit record
-        const progress = Math.round((processedCount / totalRows) * 100);
+        // Update progress based on processed products
+        const progress = Math.floor((processedCount / totalRows) * 100);
+        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} products)`);
         await db.update(audits)
           .set({ 
-            totalProducts: processedCount,
+            totalProducts: totalRows,
             progress: progress 
           })
           .where(eq(audits.id, auditId));
