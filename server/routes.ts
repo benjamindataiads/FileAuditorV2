@@ -274,16 +274,29 @@ export function registerRoutes(app: Express): Server {
     let currentChunk: any[] = [];
 
     // Count total rows first
-    const allRows = csvParse(req.file.buffer, {
+    // Pre-process the file content to properly escape quotes in description field
+    const fileContent = req.file.buffer.toString();
+    const rows = fileContent.split('\n');
+    const processedRows = rows.map(row => {
+      const columns = row.split('\t');
+      // Description is the 12th column (index 11)
+      if (columns.length > 11) {
+        columns[11] = columns[11].replace(/"/g, '""');
+        if (columns[11].includes('"') || columns[11].includes('\t')) {
+          columns[11] = `"${columns[11]}"`;
+        }
+      }
+      return columns.join('\t');
+    });
+    
+    const processedContent = processedRows.join('\n');
+    const allRows = csvParse(processedContent, {
       delimiter: '\t',
       columns: true,
       quote: '"',
       escape: '"',
-      relax_quotes: true,
-      skip_empty_lines: true,
       skip_empty_lines: true,
       relax_column_count: true,
-      relax_quotes: true,
       trim: true
     });
     const totalRows = allRows.length;
