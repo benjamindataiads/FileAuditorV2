@@ -296,10 +296,11 @@ export function registerRoutes(app: Express): Server {
         const fields = line.split('\t');
         // Process each field with minimal cleaning
         return fields.map(field => {
-          // Only clean essential characters while preserving spaces and special chars
+          // Preserve all special characters, only clean tabs since they're delimiters
           return field
-            .replace(/[\t\n\r,]+/g, ' ') // Replace tabs/newlines/commas with single space
-            .trim(); // Just trim start/end
+            .replace(/\t+/g, ' ') // Only replace tabs with space since they're delimiters
+            .trimStart() // Only trim start to avoid issues with quote parsing
+            .replace(/^"|"$/g, ''); // Remove explicit quotes if present
         }).join('\t');
       } catch (error) {
         console.error(`Error processing line ${lineIndex + 1}:`, {
