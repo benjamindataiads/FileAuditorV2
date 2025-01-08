@@ -316,20 +316,25 @@ export function registerRoutes(app: Express): Server {
 
     for await (const record of parser) {
       currentChunk.push(record);
+      processedCount += 1;
+
+      // Update progress for each record before processing
+      const progress = Math.floor((processedCount / totalRows) * 100);
+      const totalRulesExpected = totalRows * rules.length;
+      await db.update(audits)
+        .set({ 
+          progress: progress,
+          totalProducts: totalRows
+        })
+        .where(eq(audits.id, auditId));
 
       if (currentChunk.length >= CHUNK_SIZE) {
         const results = await processChunk(currentChunk, rules, columnMapping, auditId);
-        // Count unique products that have been processed
-        const uniqueProductIds = new Set(results.map(r => r.productId));
-        processedCount = uniqueProductIds.size;
-
+        
         // Track actual rules processed based on results
         const actualRulesProcessed = results.length;
         processedResults += actualRulesProcessed;
-
-        // Calculate progress based on actual processed items
-        const progress = Math.floor((processedCount / totalRows) * 100);
-        const totalRulesExpected = totalRows * rules.length;
+        
         const rulesProgress = Math.floor((processedResults / totalRulesExpected) * 100);
         const errorCount = results.filter(r => r.error).length;
 
