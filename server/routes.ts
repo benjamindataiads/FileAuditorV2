@@ -524,13 +524,19 @@ app.delete("/api/rules/:id", async (req, res) => {
       return strField;
     };
 
+    const rulesWithNames = await db.query.rules.findMany({
+      where: (rules, { inArray }) => inArray(rules.id, rules)
+    });
+
+    const ruleNames = rulesWithNames.map(r => r.name);
+    
     const content = [
-      ["ID", ...rules.map(formatField)].join(delimiter),
+      ["ID", ...ruleNames.map(formatField)].join(delimiter),
       ...allProductIds.map(productId =>
         [
           formatField(productId),
-          ...rules.map(ruleName => {
-            const result = resultsByProduct?.[productId]?.[ruleName];
+          ...rules.map(ruleId => {
+            const result = resultsByProduct?.[productId]?.[ruleId];
             const value = result
               ? `${result.status}${result.details ? ` (${result.details})` : ''}`
               : "-";
