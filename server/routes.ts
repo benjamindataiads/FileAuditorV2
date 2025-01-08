@@ -505,10 +505,43 @@ app.delete("/api/rules/:id", async (req, res) => {
       orderBy: (results, { asc }) => [asc(results.productId)]
     });
 
-    res.json({
-      ...audit,
-      results
-    });
+    const delimiter = "\t";
+    const rules = [...new Set(results.map(r => r.ruleId))].filter(Boolean);
+    const allProductIds = [...new Set(results.map(r => r.productId))];
+    const resultsByProduct = results.reduce((acc, curr) => {
+      acc[curr.productId] = acc[curr.productId] || {};
+      acc[curr.productId][curr.ruleId] = curr;
+      return acc;
+    }, {});
+
+
+    // Helper to quote and escape fields if needed
+    const formatField = (field: string) => {
+      if (field.includes('\n') || field.includes(delimiter) || field.includes('"')) {
+        return `"${field.replace(/"/g, '""')}"`;
+      }
+      return field;
+    };
+
+    const content = [
+      ["ID", ...rules.map(formatField)].join(delimiter),
+      ...allProductIds.map(productId =>
+        [
+          formatField(productId),
+          ...rules.map(ruleName => {
+            const result = resultsByProduct?.[productId]?.[ruleName];
+            const value = result
+              ? `${result.status}${result.details ? ` (${result.details})` : ''}`
+              : "-";
+            return formatField(value);
+          }),
+        ].join(delimiter)
+      ),
+    ].join("\n");
+
+    res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-${audit.id}.tsv"`);
+    res.send(content);
   });
 
   app.get("/api/audits/:id", async (req, res) => {
