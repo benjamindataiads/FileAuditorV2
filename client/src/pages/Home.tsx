@@ -33,8 +33,10 @@ export function Home() {
       if (!response.ok) {
         throw new Error("Failed to process audit");
       }
-      const data = await response.json();
-      
+      const initialData = await response.json();
+      return initialData;
+    },
+    onSuccess: async (data) => {
       // Start polling for progress
       const pollProgress = async () => {
         const progressResponse = await fetch(`/api/audits/${data.auditId}`);
@@ -42,14 +44,18 @@ export function Home() {
         return auditData.progress || 0;
       };
 
-      let progress = 0;
-      while (progress < 100) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        progress = await pollProgress();
-        data.progress = progress;
-      }
-      
-      return data;
+      const poll = async () => {
+        const progress = await pollProgress();
+        uploadMutation.mutate({ progress }, { action: 'update' });
+        
+        if (progress < 100) {
+          setTimeout(poll, 1000);
+        } else {
+          setLocation(`/audit/${data.auditId}`);
+        }
+      };
+
+      poll();
     },
     onSuccess: (data) => {
       if (data.auditId) {
