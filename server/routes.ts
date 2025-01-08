@@ -516,11 +516,12 @@ app.delete("/api/rules/:id", async (req, res) => {
 
 
     // Helper to quote and escape fields if needed
-    const formatField = (field: string) => {
-      if (field.includes('\n') || field.includes(delimiter) || field.includes('"')) {
-        return `"${field.replace(/"/g, '""')}"`;
+    const formatField = (field: any) => {
+      const strField = String(field || '');
+      if (strField.includes('\n') || strField.includes(delimiter) || strField.includes('"')) {
+        return `"${strField.replace(/"/g, '""')}"`;
       }
-      return field;
+      return strField;
     };
 
     const content = [
