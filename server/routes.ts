@@ -15,6 +15,11 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Helper function to validate a single product
 async function validateProduct(product: any, selectedRules: any[], columnMapping: Record<string, string>) {
   const results = [];
+  console.log(`Processing product with rules:`, {
+    productId: product.identifiant || 'NO_ID',
+    ruleCount: selectedRules.length,
+    rules: selectedRules.map(r => r.id)
+  });
 
   // Create a mapped product with our field names
   const mappedProduct: Record<string, any> = {};
