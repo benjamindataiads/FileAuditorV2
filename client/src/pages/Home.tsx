@@ -37,6 +37,8 @@ export function Home() {
       return initialData;
     },
     onSuccess: async (data) => {
+      if (!data.auditId) return;
+
       // Start polling for progress
       const pollProgress = async () => {
         const progressResponse = await fetch(`/api/audits/${data.auditId}`);
@@ -56,11 +58,6 @@ export function Home() {
       };
 
       poll();
-    },
-    onSuccess: (data) => {
-      if (data.auditId) {
-        setLocation(`/audit/${data.auditId}`);
-      }
     },
     onError: (error) => {
       console.error("Audit processing failed:", error);
