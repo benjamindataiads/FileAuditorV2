@@ -569,15 +569,25 @@ app.delete("/api/rules/:id", async (req, res) => {
       return res.status(404).json({ message: "Audit not found" });
     }
 
-    const results = await db.query.auditResults.findMany({
-      where: eq(auditResults.auditId, audit.id),
-      with: {
-        rule: true
-      },
-      limit: limit,
-      offset: offset,
-      orderBy: (results, { asc }) => [asc(results.productId)]
-    });
+    const results = await db.select({
+      id: auditResults.id,
+      auditId: auditResults.auditId,
+      ruleId: auditResults.ruleId,
+      productId: auditResults.productId,
+      status: auditResults.status,
+      details: auditResults.details,
+      rule: {
+        id: rules.id,
+        name: rules.name,
+        criticality: rules.criticality
+      }
+    })
+    .from(auditResults)
+    .leftJoin(rules, eq(auditResults.ruleId, rules.id))
+    .where(eq(auditResults.auditId, audit.id))
+    .limit(limit)
+    .offset(offset)
+    .orderBy(asc(auditResults.productId));
 
     const totalResults = await db.select({ count: sql`count(*)` })
       .from(auditResults)
