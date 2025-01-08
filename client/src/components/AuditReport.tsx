@@ -109,30 +109,19 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
       return acc;
     }, {} as Record<string, Record<string, any>>);
 
-    const content = [
-      ["ID", ...rules].join(delimiter),
-      ...allProductIds.map(productId =>
-        [
-          productId,
-          ...rules.map(ruleName => {
-            const result = resultsByProduct?.[productId]?.[ruleName];
-            return result
-              ? `${result.status}${result.details ? ` (${result.details})` : ''}`
-              : "-";
-          }),
-        ].join(delimiter)
-      ),
-    ].join("\n");
-
+    const response = await fetch(`/api/audits/${audit.id}/export`);
+    const content = await response.text();
+    
     const blob = new Blob([content], { type: mimeType });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.setAttribute("hidden", "");
-    a.setAttribute("href", url);
-    a.setAttribute("download", `audit-${audit.id}-results.${extension}`);
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `audit-${audit.id}-results.${extension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   // Get all unique rules and product IDs
