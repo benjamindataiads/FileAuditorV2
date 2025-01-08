@@ -88,37 +88,26 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
   };
 
   const handleExport = async (format: 'csv' | 'tsv' = 'csv') => {
-    // Fetch all results
-    const response = await fetch(`/api/audits/${audit.id}/export`);
-    const allResults = await response.json();
-    
-    const rules = [...new Set(allResults.results?.map((r: any) => r.rule?.name) || [])].sort();
-    const allProductIds = Array.from(new Set(allResults.results?.map((r: any) => r.productId) || [])).sort();
-    const delimiter = format === 'csv' ? ',' : '\t';
-    const mimeType = format === 'csv' ? 'text/csv' : 'text/tab-separated-values';
-    const extension = format === 'csv' ? 'csv' : 'tsv';
-
-    // Group all results by product ID for efficient lookup
-    const resultsByProduct = allResults.results?.reduce((acc: any, result: any) => {
-      if (!acc[result.productId]) {
-        acc[result.productId] = {};
-      }
-      if (result.rule?.name) {
-        acc[result.productId][result.rule.name] = result;
-      }
-      return acc;
-    }, {} as Record<string, Record<string, any>>);
-
-    const blob = new Blob([allResults], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.style.display = 'none';
-    a.href = url;
-    a.download = `audit-${audit.id}-results.${extension}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    try {
+      const response = await fetch(`/api/audits/${audit.id}/export`);
+      const content = await response.text();
+      
+      const mimeType = format === 'csv' ? 'text/csv' : 'text/tab-separated-values';
+      const extension = format === 'csv' ? 'csv' : 'tsv';
+      
+      const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+      const url = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-${audit.id}-results.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
   };
 
   // Get all unique rules and product IDs
