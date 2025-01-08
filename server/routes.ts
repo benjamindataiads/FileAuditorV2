@@ -319,17 +319,19 @@ export function registerRoutes(app: Express): Server {
 
       if (currentChunk.length >= CHUNK_SIZE) {
         const results = await processChunk(currentChunk, rules, columnMapping, auditId);
-        processedCount += currentChunk.length;
+        // Get unique product IDs from results
+        const processedProductIds = new Set(results.flat().map(r => r.productId));
+        processedCount = processedProductIds.size;
         processedResults += results.length;
 
-        // Calculate progress based on both products and rules
+        // Calculate progress based on unique products processed
         const progress = Math.floor((processedCount / totalRows) * 100);
-        const rulesProcessed = processedCount * rules.length;
+        const rulesProcessed = results.flat().length;
         const totalRulesExpected = totalRows * rules.length;
         const rulesProgress = Math.floor((rulesProcessed / totalRulesExpected) * 100);
-        const errorCount = results.filter(r => r.error).length;
+        const errorCount = results.flat().filter(r => r.error).length;
         
-        console.log(`Progress: ${rulesProgress}% (${processedCount}/${totalRows} products, ${rulesProcessed}/${totalRulesExpected} rules processed)`);
+        console.log(`Progress: ${progress}% (${processedCount}/${totalRows} unique products, ${rulesProcessed}/${totalRulesExpected} rules processed)`);
         await db.update(audits)
           .set({ 
             totalProducts: totalRows,
