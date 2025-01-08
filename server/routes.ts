@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, asc } from "drizzle-orm";
 import { db } from "@db";
 import { rules, audits, auditResults } from "@db/schema";
 import type { FieldMapping } from "../client/src/lib/fieldMappings";
