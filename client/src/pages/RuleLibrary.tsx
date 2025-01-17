@@ -43,6 +43,13 @@ export function RuleLibrary() {
   const { toast } = useToast();
   const { data: rules, isLoading } = useQuery<Rule[]>({
     queryKey: ["/api/rules"],
+    queryFn: async () => {
+      const response = await fetch("/api/rules");
+      if (!response.ok) {
+        throw new Error("Failed to fetch rules");
+      }
+      return response.json();
+    },
   });
 
   const deleteMutation = useMutation({

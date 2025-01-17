@@ -29,7 +29,12 @@ export default defineConfig({
       }
     },
     hmr: {
-      clientPort: 443
+      clientPort: 443,
+      overlay: false,
+      timeout: 5000
+    },
+    watch: {
+      ignored: ['**/node_modules/**', '**/dist/**']
     }
   }
 });

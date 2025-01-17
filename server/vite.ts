@@ -47,7 +47,15 @@ export async function setupVite(app: Express, server: Server) {
     },
     server: {
       middlewareMode: true,
-      hmr: { server },
+      hmr: { 
+        server,
+        port: 3003,
+        timeout: 5000,
+        overlay: false
+      },
+    },
+    optimizeDeps: {
+      force: false // Prevent forced re-optimization
     },
     appType: "custom",
   });

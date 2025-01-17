@@ -35,8 +35,17 @@ export function Home() {
   const [auditName, setAuditName] = useState("");
   const [, setLocation] = useLocation();
 
-  const { data: rules } = useQuery<Rule[]>({
+  const { data: rules, refetch: refetchRules } = useQuery<Rule[]>({
     queryKey: ["/api/rules"],
+    queryFn: async () => {
+      const response = await fetch("/api/rules");
+      if (!response.ok) {
+        throw new Error("Failed to fetch rules");
+      }
+      return response.json();
+    },
+    // Don't fetch automatically until we need it
+    enabled: false,
   });
 
   const uploadMutation = useMutation<
@@ -137,7 +146,9 @@ export function Home() {
     setColumnMapping(mapping);
   };
 
-  const handleMappingContinue = () => {
+  const handleMappingContinue = async () => {
+    // Fetch rules when transitioning to rules step
+    await refetchRules();
     setCurrentStep("rules");
   };
 
@@ -203,6 +214,9 @@ export function Home() {
               onClick={handleMappingContinue}
               disabled={Object.keys(columnMapping).length === 0}
             >
+              {rules === undefined ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               Continue
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -234,6 +248,17 @@ export function Home() {
               accept=".tsv"
               loading={false}
             />
+            <div className="mt-4 text-sm text-muted-foreground">
+              <p className="mb-2">Please clean your file before submitting it, beware of header as well (only columns names in first row)</p>
+              <a 
+                href="https://quote-stripper-benjamincozon.replit.app/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:text-blue-600 underline"
+              >
+                Click here to clean your file
+              </a>
+            </div>
           </CardContent>
         </Card>
       )}

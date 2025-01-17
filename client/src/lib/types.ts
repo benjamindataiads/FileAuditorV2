@@ -35,5 +35,12 @@ export interface AuditResult {
   productId: string;
   status: "ok" | "warning" | "critical";
   details?: string;
-  rule?: Rule;
+  rule?: {
+    id: number;
+    name: string;
+    description: string;
+    category: string;
+    condition: RuleCondition;
+    criticality: "warning" | "critical";
+  };
 }

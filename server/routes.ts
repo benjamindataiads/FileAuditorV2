@@ -10,6 +10,8 @@ import { parse as csvParse } from "csv-parse/sync";
 import { parse as dateParse, isValid } from "date-fns";
 import crypto from "crypto";
 import { cleanField, cleanTsvContent, validateTsvStructure } from "./utils/csvCleaner";
+import { Readable } from 'stream';
+import { stringify } from 'csv-stringify/sync';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -395,6 +397,14 @@ export function registerRoutes(app: Express): Server {
       const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
       const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
 
+      // Debug column mapping
+      console.log('Received column mapping:', {
+        raw: req.body.columnMapping,
+        parsed: columnMapping,
+        hasIdentifiant: Object.values(columnMapping).includes('identifiant'),
+        mappingEntries: Object.entries(columnMapping)
+      });
+
       // Create audit record
       const audit = await db.insert(audits).values({
         name: req.body.name || "Unnamed Audit",
@@ -553,63 +563,135 @@ app.delete("/api/rules/:id", async (req, res) => {
     }
   });
 
-  app.get("/api/audits/:id/export", async (req, res) => {
-    const audit = await db.query.audits.findFirst({
-      where: eq(audits.id, parseInt(req.params.id))
-    });
-
-    if (!audit) {
-      return res.status(404).json({ message: "Audit not found" });
+  // Add this helper function to transform results into the new format
+  function transformResultsForExport(results: any[], originalIdColumn: string = 'identifiant') {
+    if (!results || results.length === 0) {
+      return [];
     }
 
-    const results = await db.query.auditResults.findMany({
-      where: eq(auditResults.auditId, audit.id),
-      with: {
-        rule: true
-      },
-      orderBy: (results, { asc }) => [asc(results.productId)]
-    });
-
-    const delimiter = "\t";
-    const ruleNames = [...new Set(results.map(r => JSON.stringify({ id: r.ruleId, name: r.rule?.name })))]
-      .map(str => JSON.parse(str))
-      .filter(r => r.id && r.name);
-    const allProductIds = [...new Set(results.map(r => r.productId))];
-    const resultsByProduct = results.reduce((acc, curr) => {
-      acc[curr.productId] = acc[curr.productId] || {};
-      acc[curr.productId][curr.ruleId] = curr;
+    // Group results by product ID and collect all rule evaluations
+    const groupedResults = results.reduce((acc, result) => {
+      const productId = result.productId;
+      if (!acc[productId]) {
+        acc[productId] = {
+          [originalIdColumn]: productId, // Use the original column name from the file
+          rules: {}
+        };
+      }
+      // Store rule evaluation under the rule name
+      if (result.rule?.name) {
+        const ruleName = result.rule.name
+          .trim()
+          .replace(/[\t\n\r]/g, ' ')
+          .replace(/\s+/g, ' ');
+        acc[productId].rules[ruleName] = result.status;
+      }
       return acc;
     }, {});
 
+    // Convert to array and format for CSV
+    const products = Object.values(groupedResults);
+    
+    // Get all unique rule names
+    const ruleNames = [...new Set(results
+      .map(r => r.rule?.name)
+      .filter(Boolean)
+      .map(name => name.trim().replace(/[\t\n\r]/g, ' ').replace(/\s+/g, ' '))
+    )].sort();
+    
+    // Transform each product into a flat object
+    return products.map((product: any) => {
+      const row: any = { 
+        [originalIdColumn]: product[originalIdColumn] // Use the original column name from the file
+      };
+      ruleNames.forEach(ruleName => {
+        if (ruleName) {
+          row[ruleName] = product.rules[ruleName] || 'not_evaluated';
+        }
+      });
+      return row;
+    });
+  }
 
-    // Helper to quote and escape fields if needed
-    const formatField = (field: any) => {
-      const strField = String(field || '');
-      if (strField.includes('\n') || strField.includes(delimiter) || strField.includes('"')) {
-        return `"${strField.replace(/"/g, '""')}"`;
+  // Update the export endpoint
+  app.get("/api/audits/:id/export", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      
+      // Vérifiez que l'audit existe
+      const audit = await db.query.audits.findFirst({
+        where: eq(audits.id, auditId)
+      });
+
+      if (!audit) {
+        return res.status(404).json({ message: "Audit not found" });
       }
-      return strField;
-    };
 
-    const content = [
-      ["ID", ...ruleNames.map(r => formatField(r.name))].join(delimiter),
-      ...allProductIds.map(productId =>
-        [
-          formatField(productId),
-          ...ruleNames.map(r => {
-            const result = resultsByProduct?.[productId]?.[r.id];
-            const value = result
-              ? `${result.status}${result.details ? ` (${result.details})` : ''}`
-              : "-";
-            return formatField(value);
-          }),
-        ].join(delimiter)
-      ),
-    ].join("\n");
+      // Récupérez tous les résultats avec les règles associées
+      const results = await db
+        .select({
+          productId: auditResults.productId,
+          status: auditResults.status,
+          details: auditResults.details,
+          ruleName: rules.name,
+        })
+        .from(auditResults)
+        .leftJoin(rules, eq(auditResults.ruleId, rules.id))
+        .where(eq(auditResults.auditId, auditId));
 
-    res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="audit-${audit.id}.tsv"`);
-    res.send(content);
+      // Organisez les résultats par produit
+      const productResults = new Map<string, Map<string, string>>();
+      const ruleNames = new Set<string>();
+
+      // Regroupez les résultats par produit et collectez les noms de règles
+      results.forEach(result => {
+        if (!result.ruleName) return;
+        
+        if (!productResults.has(result.productId)) {
+          productResults.set(result.productId, new Map());
+        }
+        
+        const formattedValue = result.details 
+          ? `${result.status}: ${result.details}`
+          : result.status;
+          
+        productResults.get(result.productId)!.set(result.ruleName, formattedValue);
+        ruleNames.add(result.ruleName);
+      });
+
+      // Préparez les données pour le TSV
+      const sortedRuleNames = Array.from(ruleNames).sort();
+      const rows = [
+        ['Product ID', ...sortedRuleNames]
+      ];
+
+      // Ajoutez les données de chaque produit
+      for (const [productId, ruleResults] of productResults) {
+        const row = [productId];
+        for (const ruleName of sortedRuleNames) {
+          row.push(ruleResults.get(ruleName) || 'N/A');
+        }
+        rows.push(row);
+      }
+
+      // Convertissez en TSV
+      const tsvContent = stringify(rows, { 
+        delimiter: '\t',
+        quoted: true,
+        record_delimiter: 'windows'
+      });
+
+      // Définissez les en-têtes de réponse
+      res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="audit-${auditId}-results.tsv"`);
+      
+      // Envoyez le contenu
+      res.send(tsvContent);
+
+    } catch (error) {
+      console.error('Export error:', error);
+      res.status(500).json({ error: 'Failed to export audit results' });
+    }
   });
 
   app.get("/api/audits/:id", async (req, res) => {
@@ -783,6 +865,36 @@ async function insertResultsBatch(results: any[], auditId: number): Promise<void
     }
 }
 
+// Add cache for compiled regex patterns
+const regexCache = new Map<string, RegExp>();
+
+// Add cache for field mappings
+const fieldMappingCache = new Map<string, string>();
+
+function compareValues(value1: string, value2: string, operator: string): boolean {
+  // Convertir en minuscules pour les comparaisons insensibles à la casse
+  const v1 = value1.toLowerCase();
+  const v2 = value2.toLowerCase();
+
+  switch (operator) {
+    case "==":
+      return v1 === v2;
+    case "!=":
+      return v1 !== v2;
+    case ">":
+      return parseFloat(v1) > parseFloat(v2);
+    case ">=":
+      return parseFloat(v1) >= parseFloat(v2);
+    case "<":
+      return parseFloat(v1) < parseFloat(v2);
+    case "<=":
+      return parseFloat(v1) <= parseFloat(v2);
+    case "contains":
+      return v1.includes(v2);
+    default:
+      throw new Error(`Unsupported operator: ${operator}`);
+  }
+}
 
 function evaluateRule(product: any, rule: any) {
   const condition = rule.condition;
@@ -815,140 +927,120 @@ function evaluateRule(product: any, rule: any) {
     return value === undefined || value === null ? "" : String(value);
   };
 
-  // Helper function for case-insensitive comparison
-  const compareValues = (value1: string, value2: string, operator: string) => {
-    const v1 = value1.toLowerCase();
-    const v2 = value2.toLowerCase();
-
-    switch (operator) {
-      case "==": return v1 === v2;
-      case "!=": return v1 !== v2;
-      case "contains": return v1.includes(v2);
-      case ">": return parseFloat(v1) > parseFloat(v2);
-      case ">=": return parseFloat(v1) >= parseFloat(v2);
-      case "<": return parseFloat(v1) < parseFloat(v2);
-      case "<=": return parseFloat(v1) <= parseFloat(v2);
-      default: return false;
-    }
-  };
-
   try {
-      const fieldValue = getFieldValue(condition.field);
-      console.log(`Evaluating rule for field '${condition.field}':`, {
-        rawValue: fieldValue,
-        trimmedValue: fieldValue.trim(),
-        condition: condition,
-      });
+    const fieldValue = getFieldValue(condition.field);
+    console.log(`Evaluating rule for field '${condition.field}':`, {
+      rawValue: fieldValue,
+      trimmedValue: fieldValue.trim(),
+      condition: condition,
+    });
 
-      switch (condition.type) {
-        case "notEmpty":
-          const trimmedValue = String(fieldValue).trim();
-          if (!trimmedValue || trimmedValue.length === 0) {
+    switch (condition.type) {
+      case "notEmpty":
+        const trimmedValue = String(fieldValue).trim();
+        if (!trimmedValue || trimmedValue.length === 0) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' is empty or contains only whitespace`;
+        }
+        break;
+
+      case "minLength":
+        if (fieldValue.length < condition.value) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' has ${fieldValue.length} characters (minimum required: ${condition.value})`;
+        }
+        break;
+
+      case "maxLength":
+        if (fieldValue.length > condition.value) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' has ${fieldValue.length} characters (maximum allowed: ${condition.value})`;
+        }
+        break;
+
+      case "contains":
+        const searchValue = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
+        const testValue = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
+        if (!testValue.includes(searchValue)) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' does not contain '${condition.value}'`;
+        }
+        break;
+
+      case "doesntContain":
+        const searchValue2 = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
+        const testValue2 = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
+        if (testValue2.includes(searchValue2)) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' contains forbidden value '${condition.value}'`;
+        }
+        break;
+
+      case "regex":
+        try {
+          const regex = new RegExp(condition.value, 'i'); // Case insensitive by default
+          if (!regex.test(fieldValue)) {
             status = rule.criticality;
-            details = `Field '${condition.field}' is empty or contains only whitespace`;
+            details = `Field '${condition.field}' does not match pattern '${condition.value}'`;
           }
-          break;
+        } catch (e) {
+          status = "warning";
+          details = `Invalid regex pattern: ${condition.value}`;
+        }
+        break;
 
-        case "minLength":
-          if (fieldValue.length < condition.value) {
+      case "range":
+        const num = parseFloat(fieldValue);
+        const { min, max } = condition.value;
+        if (isNaN(num)) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' value '${fieldValue}' is not a valid number`;
+        } else if (num < min || num > max) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' value ${num} is not within range ${min}-${max}`;
+        }
+        break;
+
+      case "date":
+        try {
+          let parsedDate: Date;
+          if (condition.dateFormat === "ISO") {
+            parsedDate = new Date(fieldValue);
+          } else {
+            parsedDate = dateParse(fieldValue, condition.dateFormat || "yyyy-MM-dd", new Date());
+          }
+
+          if (isNaN(parsedDate.getTime())) {
             status = rule.criticality;
-            details = `Field '${condition.field}' has ${fieldValue.length} characters (minimum required: ${condition.value})`;
+            details = `Field '${condition.field}' is not a valid date in format ${condition.dateFormat || "yyyy-MM-dd"}`;
           }
-          break;
+        } catch (e) {
+          status = rule.criticality;
+          details = `Field '${condition.field}' has invalid date format`;
+        }
+        break;
 
-        case "maxLength":
-          if (fieldValue.length > condition.value) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' has ${fieldValue.length} characters (maximum allowed: ${condition.value})`;
-          }
-          break;
+      case "crossField":
+        const { field: compareFieldName, operator } = condition.value;
+        const compareFieldValue = getFieldValue(compareFieldName);
 
-        case "contains":
-          const searchValue = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
-          const testValue = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
-          if (!testValue.includes(searchValue)) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' does not contain '${condition.value}'`;
-          }
-          break;
-
-        case "doesntContain":
-          const searchValue2 = condition.caseSensitive ? condition.value : condition.value.toLowerCase();
-          const testValue2 = condition.caseSensitive ? fieldValue : fieldValue.toLowerCase();
-          if (testValue2.includes(searchValue2)) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' contains forbidden value '${condition.value}'`;
-          }
-          break;
-
-        case "date":
-          try {
-            let parsedDate: Date;
-            if (condition.dateFormat === "ISO") {
-              parsedDate = new Date(fieldValue);
-            } else {
-              parsedDate = dateParse(fieldValue, condition.dateFormat || "yyyy-MM-dd", new Date());
-            }
-
-            if (isNaN(parsedDate.getTime())) {
-              status = rule.criticality;
-              details = `Field '${condition.field}' is not a valid date in format ${condition.dateFormat || "yyyy-MM-dd"}`;
-            }
-          } catch (e) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' has invalid date format`;
-          }
-          break;
-
-        case "regex":
-          try {
-            const regex = new RegExp(condition.value, 'i'); // Case insensitive by default
-            if (!regex.test(fieldValue)) {
-              status = rule.criticality;
-              details = `Field '${condition.field}' does not match pattern '${condition.value}'`;
-            }
-          } catch (e) {
-            status = "warning";
-            details = `Invalid regex pattern: ${condition.value}`;
-          }
-          break;
-
-        case "range":
-          const num = parseFloat(fieldValue);
-          const { min, max } = condition.value;
-          if (isNaN(num)) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' value '${fieldValue}' is not a valid number`;
-          } else if (num < min || num > max) {
-            status = rule.criticality;
-            details = `Field '${condition.field}' value ${num} is not within range ${min}-${max}`;
-          }
-          break;
-
-        case "crossField":
-          const { field: compareFieldName, operator } = condition.value;
-          const compareFieldValue = getFieldValue(compareFieldName);
-
+        try {
           if (!compareValues(fieldValue, compareFieldValue, operator)) {
-            const operatorMap = {
-              "==": "equal to",
-              "!=": "not equal to",
-              ">": "greater than",
-              ">=": "greater than or equal to",
-              "<": "less than",
-              "<=": "less than or equal to"
-            } as const;
-
-            const operatorText = operatorMap[operator as keyof typeof operatorMap];
             status = rule.criticality;
-            details = `Field '${condition.field}' (${fieldValue}) is not ${operatorText} '${compareFieldName}' (${compareFieldValue})`;
+            details = `Field '${condition.field}' (${fieldValue}) ${operator} '${compareFieldName}' (${compareFieldValue}) is false`;
           }
-          break;
-      }
-    } catch (error: unknown) {
-      status = "warning";
-      details = `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        } catch (error) {
+          status = rule.criticality;
+          details = `Error comparing fields: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        }
+        break;
     }
 
-  return { status, details };
+    console.log(`Rule evaluation result:`, { status, details });
+    return { status, details };
+  } catch (error: unknown) {
+    status = "warning";
+    details = `Error evaluating rule: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    return { status, details };
+  }
 }

@@ -6,11 +6,15 @@ import { Toaster } from "@/components/ui/toaster";
 import App from './App';
 import "./index.css";
 
+const AppWrapper = process.env.NODE_ENV === 'development' 
+  ? ({ children }: { children: React.ReactNode }) => children
+  : StrictMode;
+
 createRoot(document.getElementById("root")!).render(
-  <StrictMode>
+  <AppWrapper>
     <QueryClientProvider client={queryClient}>
       <App />
       <Toaster />
     </QueryClientProvider>
-  </StrictMode>,
+  </AppWrapper>,
 );
