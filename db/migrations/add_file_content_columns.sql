@@ -1,0 +1,3 @@
+ALTER TABLE audits 
+ADD COLUMN IF NOT EXISTS file_content TEXT,
+ADD COLUMN IF NOT EXISTS column_mapping JSONB; 

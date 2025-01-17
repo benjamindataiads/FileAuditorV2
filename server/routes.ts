@@ -313,6 +313,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/audit", upload.single("file"), async (req, res) => {
     try {
       const fileContent = req.file.buffer.toString('utf-8');
+      const columnMapping = JSON.parse(req.body.columnMapping);
       
       // Validate TSV structure first
       const validation = validateTsvStructure(fileContent);
@@ -395,7 +396,6 @@ export function registerRoutes(app: Express): Server {
       console.log(`Successfully parsed ${totalRows} rows`);
 
       const selectedRules = req.body.rules ? JSON.parse(req.body.rules) : [];
-      const columnMapping = req.body.columnMapping ? JSON.parse(req.body.columnMapping) : {};
 
       // Debug column mapping
       console.log('Received column mapping:', {
@@ -413,7 +413,11 @@ export function registerRoutes(app: Express): Server {
         compliantProducts: 0,
         warningProducts: 0,
         criticalProducts: 0,
+        fileContent: fileContent,
+        columnMapping: columnMapping,
       }).returning();
+
+      console.log('New audit created:', audit[0]);
 
       const auditId = audit[0].id;
 
@@ -471,6 +475,12 @@ export function registerRoutes(app: Express): Server {
           progress: 100,
         })
         .where(eq(audits.id, auditId));
+
+      console.log('Final audit counts:', {
+        compliant: counts.compliant,
+        warning: counts.warning,
+        critical: counts.critical
+      });
 
       res.json({ auditId });
     } catch (error: any) {
@@ -553,10 +563,33 @@ app.delete("/api/rules/:id", async (req, res) => {
   // Get all audits
   app.get("/api/audits", async (_req, res) => {
     try {
-      const allAudits = await db.query.audits.findMany({
-        orderBy: (audits, { desc }) => [desc(audits.createdAt)],
-      });
-      res.json(allAudits);
+      const allAudits = await db.execute(sql`
+        SELECT 
+          id, 
+          name, 
+          file_hash,
+          total_products,
+          compliant_products,
+          warning_products,
+          critical_products,
+          progress,
+          created_at::text as created_at,
+          rules_processed,
+          total_rules,
+          error_count
+        FROM audits
+        ORDER BY created_at DESC
+      `);
+
+      // Add a flag to indicate if this is a legacy audit
+      const auditsWithLegacyFlag = allAudits.rows.map(audit => ({
+        ...audit,
+        createdAt: audit.created_at,
+        isLegacy: true,
+        canReprocess: false
+      }));
+
+      res.json(auditsWithLegacyFlag);
     } catch (error) {
       console.error('Error fetching audits:', error);
       res.status(500).json({ message: "Failed to fetch audits" });
@@ -699,132 +732,212 @@ app.delete("/api/rules/:id", async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 100;
     const offset = (page - 1) * limit;
 
-    const audit = await db.query.audits.findFirst({
-      where: eq(audits.id, parseInt(req.params.id))
-    });
+    try {
+      const audit = await db.execute(sql`
+        SELECT 
+          id, 
+          name, 
+          file_hash as "fileHash",
+          total_products as "totalProducts",
+          compliant_products as "compliantProducts",
+          warning_products as "warningProducts",
+          critical_products as "criticalProducts",
+          progress,
+          created_at as "createdAt",
+          rules_processed as "rulesProcessed",
+          total_rules as "totalRules",
+          error_count as "errorCount"
+        FROM audits
+        WHERE id = ${parseInt(req.params.id)}
+      `);
 
-    if (!audit) {
-      return res.status(404).json({ message: "Audit not found" });
-    }
+      console.log('Audit data from database:', audit.rows[0]);
 
-    const results = await db.query.auditResults.findMany({
-      where: eq(auditResults.auditId, audit.id),
-      with: {
-        rule: true
-      },
-      limit: limit,
-      offset: offset,
-      orderBy: (results, { asc }) => [asc(results.productId)]
-    });
-
-    const totalResults = await db.select({ count: sql`count(*)` })
-      .from(auditResults)
-      .where(eq(auditResults.auditId, audit.id));
-
-    res.json({
-      ...audit,
-      results,
-      pagination: {
-        total: totalResults[0].count,
-        page,
-        limit,
-        totalPages: Math.ceil(totalResults[0].count / limit)
+      if (!audit.rows[0]) {
+        return res.status(404).json({ message: "Audit not found" });
       }
-    });
+
+      const auditData = {
+        ...audit.rows[0],
+        isLegacy: true,
+        canReprocess: false
+      };
+
+      const results = await db.query.auditResults.findMany({
+        where: eq(auditResults.auditId, auditData.id),
+        with: {
+          rule: true
+        },
+        limit: limit,
+        offset: offset,
+        orderBy: (results, { asc }) => [asc(results.productId)]
+      });
+
+      const totalResults = await db.select({ count: sql`count(*)` })
+        .from(auditResults)
+        .where(eq(auditResults.auditId, auditData.id));
+
+      res.json({
+        ...auditData,
+        totalProducts: Number(auditData.totalProducts),
+        compliantProducts: Number(auditData.compliantProducts),
+        warningProducts: Number(auditData.warningProducts),
+        criticalProducts: Number(auditData.criticalProducts),
+        results,
+        pagination: {
+          total: totalResults[0].count,
+          page,
+          limit,
+          totalPages: Math.ceil(totalResults[0].count / limit)
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching audit:', error);
+      res.status(500).json({ message: "Failed to fetch audit" });
+    }
   });
 
-  app.post("/api/audits/:id/rerun", async (req, res) => {
-    const oldAudit = await db.query.audits.findFirst({
-      where: eq(audits.id, parseInt(req.params.id)),
-      with: {
-        results: {
-          with: {
-            rule: true
+  app.post("/api/audits/:id/reprocess", async (req, res) => {
+    try {
+      // Get the original audit
+      const originalAudit = await db.query.audits.findFirst({
+        where: eq(audits.id, parseInt(req.params.id)),
+      });
+
+      if (!originalAudit || !originalAudit.fileContent || !originalAudit.columnMapping) {
+        return res.status(404).json({ 
+          message: "Audit not found or missing required data" 
+        });
+      }
+
+      // Parse the selected rules from the request
+      const selectedRules = req.body.rules || [];
+
+      // Create new audit record
+      const newAudit = await db.insert(audits).values({
+        name: `${originalAudit.name} (Reprocessed)`,
+        fileHash: originalAudit.fileHash,
+        totalProducts: originalAudit.totalProducts,
+        compliantProducts: 0,
+        warningProducts: 0,
+        criticalProducts: 0,
+        fileContent: originalAudit.fileContent,
+        columnMapping: originalAudit.columnMapping,
+      }).returning();
+
+      const auditId = newAudit[0].id;
+
+      // Parse the file content
+      const allRows = csvParse(originalAudit.fileContent, {
+        delimiter: '\t',
+        columns: true,
+        skip_empty_lines: true,
+        relax_column_count: true,
+      });
+
+      // Load rules
+      const rules = await loadRules(selectedRules);
+
+      // Update total rules count
+      await db.update(audits)
+        .set({ totalRules: rules.length * allRows.length })
+        .where(eq(audits.id, auditId));
+
+      // Process rows in batches
+      const BATCH_SIZE = 100;
+      let compliant = 0;
+      let warning = 0;
+      let critical = 0;
+
+      for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
+        const batch = allRows.slice(i, i + BATCH_SIZE);
+        const batchResults = [];
+        
+        for (const record of batch) {
+          const productResults = await validateProduct(
+            record, 
+            rules, 
+            originalAudit.columnMapping
+          );
+          batchResults.push(...productResults);
+        }
+
+        // Process results
+        await processChunk(batchResults, auditId);
+
+        // Update counters
+        for (const result of batchResults) {
+          switch (result.status) {
+            case "ok": compliant++; break;
+            case "warning": warning++; break;
+            case "critical": critical++; break;
           }
         }
       }
-    });
 
-    if (!oldAudit) {
-      return res.status(404).json({ message: "Audit not found" });
+      // Update final statistics
+      await db.update(audits)
+        .set({
+          compliantProducts: compliant,
+          warningProducts: warning,
+          criticalProducts: critical,
+        })
+        .where(eq(audits.id, auditId));
+
+      res.json({ 
+        message: "Audit reprocessed successfully", 
+        auditId: auditId 
+      });
+
+    } catch (error) {
+      console.error('Error reprocessing audit:', error);
+      res.status(500).json({ 
+        message: "Failed to reprocess audit",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
+  });
 
-    // Create new audit with same rules
-    const ruleIds = [...new Set(oldAudit.results?.map(r => r.ruleId))].filter(Boolean);
-    const rules = await loadRules(ruleIds);
+  app.get("/api/audits/:id/rule-stats", async (req, res) => {
+    try {
+      const auditId = parseInt(req.params.id);
+      
+      const ruleStats = await db.execute<{
+        rule: string;
+        ok: number;
+        warning: number;
+        critical: number;
+      }>(sql`
+        WITH rule_counts AS (
+          SELECT 
+            r.name as rule,
+            ar.status,
+            COUNT(DISTINCT ar.product_id)::float as count,
+            CAST(
+              (COUNT(DISTINCT ar.product_id)::float * 100.0) / 
+              NULLIF(SUM(COUNT(DISTINCT ar.product_id)) OVER (PARTITION BY r.name), 0)
+              AS DECIMAL(10,1)
+            ) as percentage
+          FROM audit_results ar
+          JOIN rules r ON ar.rule_id = r.id
+          WHERE ar.audit_id = ${auditId}
+          GROUP BY r.name, ar.status
+        )
+        SELECT 
+          rule,
+          COALESCE(MAX(CASE WHEN status = 'ok' THEN percentage END), 0.0) as ok,
+          COALESCE(MAX(CASE WHEN status = 'warning' THEN percentage END), 0.0) as warning,
+          COALESCE(MAX(CASE WHEN status = 'critical' THEN percentage END), 0.0) as critical
+        FROM rule_counts
+        GROUP BY rule
+        ORDER BY rule
+      `);
 
-    if (!rules || rules.length === 0) {
-      // Use original results if no rules found
-      const results = oldAudit.results || [];
-      if (results.length === 0) {
-        return res.status(400).json({ message: "No results found for this audit" });
-      }
-      rules.push(...results.map(r => r.rule).filter(Boolean));
+      res.json(ruleStats.rows || []);
+    } catch (error) {
+      console.error('Error fetching rule statistics:', error);
+      res.status(500).json({ message: "Failed to fetch rule statistics" });
     }
-
-    // Get all unique products from old audit
-    const products = [...new Set(oldAudit.results?.map(r => ({
-      id: r.productId,
-      // Add any other fields from the original product
-    })))];
-
-    // Create new audit entry
-    const newAudit = await db.insert(audits).values({
-      name: `${oldAudit.name} (Rerun)`,
-      fileHash: oldAudit.fileHash,
-      totalProducts: products.length,
-      compliantProducts: 0,
-      warningProducts: 0,
-      criticalProducts: 0,
-    }).returning();
-
-    const auditId = newAudit[0].id;
-    const batchPromises = [];
-
-    // Reuse the original audit results to maintain consistency
-    const results = oldAudit.results?.map(r => ({
-      auditId,
-      ruleId: r.ruleId,
-      productId: r.productId,
-      status: r.status,
-      details: r.details,
-      fieldName: r.fieldName
-    })) || [];
-
-    // Process in batches
-    for (let i = 0; i < results.length; i += 100) {
-      const batch = results.slice(i, i + 100);
-      batchPromises.push(insertResultsBatch(batch, auditId));
-    }
-
-    await Promise.all(batchPromises);
-
-    // Update audit counts
-    const auditResultsData = await db.query.auditResults.findMany({
-      where: eq(auditResults.auditId, auditId)
-    });
-
-    console.log('Audit results after processing:', {
-      auditId,
-      totalResults: auditResultsData.length,
-      results: auditResultsData.slice(0, 5) // Log first 5 results for debugging
-    });
-
-    const counts = {
-      compliant: auditResultsData.filter(r => r.status === "ok").length,
-      warning: auditResultsData.filter(r => r.status === "warning").length,
-      critical: auditResultsData.filter(r => r.status === "critical").length,
-    };
-
-    await db.update(audits)
-      .set({
-        compliantProducts: counts.compliant,
-        warningProducts: counts.warning,
-        criticalProducts: counts.critical,
-      })
-      .where(eq(audits.id, auditId));
-
-    res.json({ auditId });
   });
 
   const httpServer = createServer(app);
@@ -872,27 +985,44 @@ const regexCache = new Map<string, RegExp>();
 const fieldMappingCache = new Map<string, string>();
 
 function compareValues(value1: string, value2: string, operator: string): boolean {
-  // Convertir en minuscules pour les comparaisons insensibles à la casse
-  const v1 = value1.toLowerCase();
-  const v2 = value2.toLowerCase();
+  // Convert values to strings and normalize for comparison
+  const v1 = String(value1).toLowerCase();
+  const v2 = String(value2).toLowerCase();
 
-  switch (operator) {
-    case "==":
-      return v1 === v2;
-    case "!=":
-      return v1 !== v2;
-    case ">":
-      return parseFloat(v1) > parseFloat(v2);
-    case ">=":
-      return parseFloat(v1) >= parseFloat(v2);
-    case "<":
-      return parseFloat(v1) < parseFloat(v2);
-    case "<=":
-      return parseFloat(v1) <= parseFloat(v2);
-    case "contains":
-      return v1.includes(v2);
-    default:
-      throw new Error(`Unsupported operator: ${operator}`);
+  try {
+    switch (operator) {
+      case "==":
+        return v1 === v2;
+      case "!=":
+        return v1 !== v2;
+      case "contains":
+        return v1.includes(v2);
+      case ">": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 > num2;
+      }
+      case ">=": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 >= num2;
+      }
+      case "<": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 < num2;
+      }
+      case "<=": {
+        const num1 = parseFloat(value1);
+        const num2 = parseFloat(value2);
+        return !isNaN(num1) && !isNaN(num2) && num1 <= num2;
+      }
+      default:
+        throw new Error(`Unsupported operator: ${operator}`);
+    }
+  } catch (error) {
+    console.error('Error comparing values:', error);
+    return false;
   }
 }
 
@@ -1020,20 +1150,38 @@ function evaluateRule(product: any, rule: any) {
         }
         break;
 
-      case "crossField":
+      case "crossField": {
         const { field: compareFieldName, operator } = condition.value;
         const compareFieldValue = getFieldValue(compareFieldName);
 
+        if (compareFieldValue === undefined) {
+          status = rule.criticality;
+          details = `Comparison field '${compareFieldName}' not found`;
+          break;
+        }
+
         try {
-          if (!compareValues(fieldValue, compareFieldValue, operator)) {
+          const result = compareValues(fieldValue, compareFieldValue, operator);
+          if (!result) {
             status = rule.criticality;
-            details = `Field '${condition.field}' (${fieldValue}) ${operator} '${compareFieldName}' (${compareFieldValue}) is false`;
+            const operatorDisplay = {
+              "==": "equal to",
+              "!=": "not equal to",
+              "contains": "containing",
+              ">": "greater than",
+              ">=": "greater than or equal to",
+              "<": "less than",
+              "<=": "less than or equal to"
+            }[operator] || operator;
+
+            details = `Field '${condition.field}' (${fieldValue}) is not ${operatorDisplay} '${compareFieldName}' (${compareFieldValue})`;
           }
         } catch (error) {
           status = rule.criticality;
           details = `Error comparing fields: ${error instanceof Error ? error.message : 'Unknown error'}`;
         }
         break;
+      }
     }
 
     console.log(`Rule evaluation result:`, { status, details });

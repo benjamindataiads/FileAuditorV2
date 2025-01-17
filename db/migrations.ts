@@ -1,9 +1,25 @@
-
 import { db } from "./index";
 import { rules, audits, auditResults } from "./schema";
 import { seedDefaultRules } from "./defaultRules";
 
-async function createTables() {
+export async function migrate() {
+  try {
+    // Add new columns to audits table
+    await db.execute(`
+      ALTER TABLE audits 
+      ADD COLUMN IF NOT EXISTS file_content TEXT,
+      ADD COLUMN IF NOT EXISTS column_mapping JSONB;
+    `);
+
+    console.log('Added file_content and column_mapping columns to audits table');
+    return true;
+  } catch (error) {
+    console.error('Migration error:', error);
+    throw error;
+  }
+}
+
+export async function createTables() {
   try {
     // Drop existing tables in correct order
     await db.execute(`DROP TABLE IF EXISTS audit_results CASCADE`);
@@ -52,13 +68,26 @@ async function createTables() {
       );
     `);
 
+    // Add new columns to audits table
+    await db.execute(`
+      ALTER TABLE audits 
+      ADD COLUMN IF NOT EXISTS file_content TEXT,
+      ADD COLUMN IF NOT EXISTS column_mapping JSONB;
+    `);
+
+    console.log('Added file_content and column_mapping columns to audits table');
+
     // Seed default rules
     await seedDefaultRules(db);
     
     console.log('Database tables reset and default rules seeded successfully');
   } catch (error) {
     console.error('Error resetting database:', error);
+    throw error;
   }
 }
 
-createTables();
+// Only run createTables if this file is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  createTables();
+}

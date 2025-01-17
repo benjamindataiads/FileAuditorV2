@@ -38,13 +38,36 @@ import {
 } from "@/components/ui/tooltip";
 import type { Audit } from "@/lib/types";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useQuery } from "@tanstack/react-query";
 
 interface AuditReportProps {
   audit: Audit;
   onPageChange: (page: number) => void; // Added onPageChange function
 }
 
+// Add proper type for rule stats
+interface RuleStats {
+  rule: string;
+  ok: number;
+  warning: number;
+  critical: number;
+}
+
 export function AuditReport({ audit, onPageChange }: AuditReportProps) {
+  // Add type safety for the numbers
+  const totalProducts = Number(audit.totalProducts) || 0;
+  const compliantProducts = Number(audit.compliantProducts) || 0;
+  const warningProducts = Number(audit.warningProducts) || 0;
+  const criticalProducts = Number(audit.criticalProducts) || 0;
+
+  console.log('Audit data received:', {
+    totalProducts,
+    compliantProducts,
+    warningProducts,
+    criticalProducts,
+    fullAudit: audit
+  });
+  
   const [isExporting, setIsExporting] = useState(false);
   const pieChartData = [
     { name: "Compliant", value: audit.compliantProducts, color: "#22c55e" },
@@ -53,11 +76,8 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
   ];
 
   const calculateComplianceScore = () => {
-    const total = audit.totalProducts;
-    if (total === 0) return 0;
-
-    const score =
-      ((audit.compliantProducts + audit.warningProducts * 0.5) / total) * 100;
+    if (totalProducts === 0) return 0;
+    const score = ((compliantProducts + warningProducts * 0.5) / totalProducts) * 100;
     return Math.round(score);
   };
 
@@ -140,6 +160,29 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
     return acc;
   }, {} as Record<string, Record<string, typeof audit.results[0]>>);
 
+  const { data: ruleStats, error: ruleStatsError, isLoading: ruleStatsLoading } = useQuery<RuleStats[]>({
+    queryKey: [`/api/audits/${audit.id}/rule-stats`],
+    queryFn: async () => {
+      const response = await fetch(`/api/audits/${audit.id}/rule-stats`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch rule stats');
+      }
+      const data = await response.json();
+      console.log('Received rule stats:', data); // Debug log
+      return data;
+    },
+    retry: false, // Don't retry on failure
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+  });
+
+  // Near the top of the component, add data validation
+  const validRuleStats = ruleStats?.map(stat => ({
+    ...stat,
+    ok: Number(stat.ok) || 0,
+    warning: Number(stat.warning) || 0,
+    critical: Number(stat.critical) || 0
+  })) || [];
+
   return (
     <TooltipProvider>
       <div className="space-y-6">
@@ -149,7 +192,9 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
               <CardTitle>Total Products</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{audit.totalProducts}</div>
+              <div className="text-2xl font-bold">
+                {totalProducts || 'N/A'}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -157,7 +202,9 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
               <CardTitle>Compliance Score</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{calculateComplianceScore()}%</div>
+              <div className="text-2xl font-bold">
+                {isNaN(calculateComplianceScore()) ? 'N/A' : `${calculateComplianceScore()}%`}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -166,7 +213,7 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-destructive">
-                {audit.criticalProducts}
+                {audit.criticalProducts ?? 'N/A'}
               </div>
             </CardContent>
           </Card>
@@ -236,43 +283,76 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
           </CardHeader>
           <CardContent>
             <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={audit.results.reduce((acc, result) => {
-                    const ruleName = result.rule?.name || 'Unknown';
-                    const existing = acc.find(item => item.rule === ruleName);
-                    if (!existing) {
-                      acc.push({
-                        rule: ruleName,
-                        ok: result.status === 'ok' ? 1 : 0,
-                        warning: result.status === 'warning' ? 1 : 0,
-                        critical: result.status === 'critical' ? 1 : 0,
-                        total: 1
-                      });
-                    } else {
-                      existing[result.status] += 1;
-                      existing.total += 1;
-                    }
-                    return acc;
-                  }, [] as any[]).map(item => ({
-                    rule: item.rule,
-                    ok: (item.ok / item.total) * 100,
-                    warning: (item.warning / item.total) * 100,
-                    critical: (item.critical / item.total) * 100
-                  }))}
-                  layout="horizontal"
-                  margin={{ top: 20, right: 30, left: 150, bottom: 40 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="category" dataKey="rule" angle={-45} textAnchor="end" interval={0} height={100} />
-                  <YAxis type="number" unit="%" domain={[0, 100]} tickFormatter={(value) => `${Math.round(value)}%`} />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ marginLeft: '50px' }} />
-                  <Bar dataKey="ok" stackId="stack" fill="#22c55e" name="Compliant" />
-                  <Bar dataKey="warning" stackId="stack" fill="#f59e0b" name="Warning" />
-                  <Bar dataKey="critical" stackId="stack" fill="#ef4444" name="Critical" />
-                </BarChart>
-              </ResponsiveContainer>
+              {ruleStatsError ? (
+                <div className="flex items-center justify-center h-full text-destructive">
+                  Error loading rule statistics
+                </div>
+              ) : ruleStatsLoading ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  Loading...
+                </div>
+              ) : !ruleStats?.length ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No rule statistics available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={validRuleStats}
+                    layout="horizontal"
+                    margin={{ top: 20, right: 30, left: 150, bottom: 40 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      type="category" 
+                      dataKey="rule" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      interval={0} 
+                      height={100} 
+                    />
+                    <YAxis 
+                      type="number" 
+                      unit="%" 
+                      domain={[0, 100]} 
+                      tickFormatter={(value) => `${Math.round(value)}%`} 
+                    />
+                    <RechartsTooltip 
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        return (
+                          <div className="bg-white p-2 border rounded shadow">
+                            {payload.map((entry: any) => {
+                              // Ensure value is a number and handle potential undefined/null
+                              const value = typeof entry.value === 'number' ? entry.value : 0;
+                              return (
+                                <div key={entry.name} className="flex items-center gap-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full" 
+                                    style={{ backgroundColor: entry.color }}
+                                  />
+                                  <span>
+                                    {entry.name}: {value.toFixed(1)}%
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }}
+                    />
+                    <Legend 
+                      layout="vertical" 
+                      align="right" 
+                      verticalAlign="middle" 
+                      wrapperStyle={{ marginLeft: '50px' }} 
+                    />
+                    <Bar dataKey="ok" stackId="stack" fill="#22c55e" name="Compliant" />
+                    <Bar dataKey="warning" stackId="stack" fill="#f59e0b" name="Warning" />
+                    <Bar dataKey="critical" stackId="stack" fill="#ef4444" name="Critical" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>

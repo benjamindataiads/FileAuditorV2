@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, varchar, json } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -37,6 +37,8 @@ export const audits = pgTable("audits", {
   totalRules: integer("total_rules").notNull().default(0),
   errorCount: integer("error_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
+  fileContent: text("file_content"),
+  columnMapping: json("column_mapping").$type<Record<string, string>>(),
 });
 
 // Audit results table to store detailed results

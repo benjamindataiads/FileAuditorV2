@@ -139,13 +139,16 @@ export function AuditHistory() {
                       100
                   );
 
+                  const createdAt = audit.createdAt ? new Date(audit.createdAt) : new Date();
+                  const isValidDate = !isNaN(createdAt.getTime());
+
                   return (
                     <TableRow key={audit.id}>
                       <TableCell>{audit.name}</TableCell>
                       <TableCell>{audit.totalProducts}</TableCell>
                       <TableCell>{complianceScore}%</TableCell>
                       <TableCell>
-                        {format(new Date(audit.createdAt), "PPp")}
+                        {isValidDate ? format(createdAt, "PPp") : "Invalid date"}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-4">

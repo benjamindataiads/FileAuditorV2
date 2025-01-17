@@ -24,8 +24,18 @@ export interface Audit {
   compliantProducts: number;
   warningProducts: number;
   criticalProducts: number;
+  progress: number;
   createdAt: string;
+  rulesProcessed: number;
+  totalRules: number;
+  errorCount: number;
   results?: AuditResult[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface AuditResult {
