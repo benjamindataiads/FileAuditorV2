@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, inArray } from "drizzle-orm";
 import { db } from "@db";
 import { rules, audits, auditResults } from "@db/schema";
 import type { FieldMapping } from "../client/src/lib/fieldMappings";
@@ -733,7 +733,10 @@ app.delete("/api/rules/:id", async (req, res) => {
 
     } catch (error) {
       console.error('Export error:', error);
-      res.status(500).json({ error: 'Failed to export audit results' });
+      // Only send error response if headers haven't been sent
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to export audit results' });
+      }
     }
   });
 
