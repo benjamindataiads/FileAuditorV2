@@ -731,55 +731,6 @@ app.delete("/api/rules/:id", async (req, res) => {
 
       res.end();
 
-      // Organisez les résultats par produit
-      const productResults = new Map<string, Map<string, string>>();
-      const ruleNames = new Set<string>();
-
-      // Regroupez les résultats par produit et collectez les noms de règles
-      results.forEach(result => {
-        if (!result.ruleName) return;
-        
-        if (!productResults.has(result.productId)) {
-          productResults.set(result.productId, new Map());
-        }
-        
-        const formattedValue = result.details 
-          ? `${result.status}: ${result.details}`
-          : result.status;
-          
-        productResults.get(result.productId)!.set(result.ruleName, formattedValue);
-        ruleNames.add(result.ruleName);
-      });
-
-      // Préparez les données pour le TSV
-      const sortedRuleNames = Array.from(ruleNames).sort();
-      const rows = [
-        ['Product ID', ...sortedRuleNames]
-      ];
-
-      // Ajoutez les données de chaque produit
-      for (const [productId, ruleResults] of productResults) {
-        const row = [productId];
-        for (const ruleName of sortedRuleNames) {
-          row.push(ruleResults.get(ruleName) || 'N/A');
-        }
-        rows.push(row);
-      }
-
-      // Convertissez en TSV
-      const tsvContent = stringify(rows, { 
-        delimiter: '\t',
-        quoted: true,
-        record_delimiter: 'windows'
-      });
-
-      // Définissez les en-têtes de réponse
-      res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="audit-${auditId}-results.tsv"`);
-      
-      // Envoyez le contenu
-      res.send(tsvContent);
-
     } catch (error) {
       console.error('Export error:', error);
       res.status(500).json({ error: 'Failed to export audit results' });
