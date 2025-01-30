@@ -322,6 +322,9 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
                         if (!active || !payload?.length) return null;
                         return (
                           <div className="bg-white p-2 border rounded shadow">
+                            <div className="font-medium border-b pb-1 mb-2">
+                              {payload[0]?.payload?.rule}
+                            </div>
                             {payload.map((entry: any) => {
                               // Ensure value is a number and handle potential undefined/null
                               const value = typeof entry.value === 'number' ? entry.value : 0;
