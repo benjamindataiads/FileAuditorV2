@@ -456,15 +456,20 @@ export function registerRoutes(app: Express): Server {
           .where(eq(audits.id, auditId));
       }
 
-      // Update final audit counts
-      const auditResultsData = await db.query.auditResults.findMany({
-        where: eq(auditResults.auditId, auditId)
-      });
+      // Update final audit counts using SQL aggregation
+      const countResults = await db.execute(sql`
+        SELECT 
+          COUNT(CASE WHEN status = 'ok' THEN 1 END) as compliant,
+          COUNT(CASE WHEN status = 'warning' THEN 1 END) as warning,
+          COUNT(CASE WHEN status = 'critical' THEN 1 END) as critical
+        FROM audit_results 
+        WHERE audit_id = ${auditId}
+      `);
 
       const counts = {
-        compliant: auditResultsData.filter(r => r.status === "ok").length,
-        warning: auditResultsData.filter(r => r.status === "warning").length,
-        critical: auditResultsData.filter(r => r.status === "critical").length,
+        compliant: parseInt(countResults.rows[0].compliant) || 0,
+        warning: parseInt(countResults.rows[0].warning) || 0,
+        critical: parseInt(countResults.rows[0].critical) || 0,
       };
 
       await db.update(audits)
