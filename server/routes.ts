@@ -655,8 +655,8 @@ app.delete("/api/rules/:id", async (req, res) => {
   app.get("/api/audits/:id/export", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
+      const BATCH_SIZE = 1000;
       
-      // Vérifiez que l'audit existe
       const audit = await db.query.audits.findFirst({
         where: eq(audits.id, auditId)
       });
@@ -665,17 +665,71 @@ app.delete("/api/rules/:id", async (req, res) => {
         return res.status(404).json({ message: "Audit not found" });
       }
 
-      // Récupérez tous les résultats avec les règles associées
-      const results = await db
-        .select({
-          productId: auditResults.productId,
-          status: auditResults.status,
-          details: auditResults.details,
-          ruleName: rules.name,
-        })
+      // Stream the response
+      res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="audit-${auditId}-results.tsv"`);
+
+      // First get distinct product IDs
+      const productIds = await db
+        .selectDistinct({ productId: auditResults.productId })
         .from(auditResults)
-        .leftJoin(rules, eq(auditResults.ruleId, rules.id))
         .where(eq(auditResults.auditId, auditId));
+
+      // Get all rule names for headers
+      const ruleNames = await db
+        .selectDistinct({ name: rules.name })
+        .from(rules)
+        .innerJoin(auditResults, eq(auditResults.ruleId, rules.id))
+        .where(eq(auditResults.auditId, auditId));
+
+      // Write headers
+      const headers = ['Product ID', ...ruleNames.map(r => r.name)].join('\t');
+      res.write(headers + '\n');
+
+      // Process products in batches
+      for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
+        const batchProductIds = productIds.slice(i, i + BATCH_SIZE);
+        
+        const results = await db
+          .select({
+            productId: auditResults.productId,
+            status: auditResults.status,
+            details: auditResults.details,
+            ruleName: rules.name,
+          })
+          .from(auditResults)
+          .leftJoin(rules, eq(auditResults.ruleId, rules.id))
+          .where(
+            and(
+              eq(auditResults.auditId, auditId),
+              inArray(auditResults.productId, batchProductIds.map(p => p.productId))
+            )
+          );
+
+        // Process and write batch results
+        const productResults = new Map();
+        results.forEach(result => {
+          if (!result.ruleName) return;
+          if (!productResults.has(result.productId)) {
+            productResults.set(result.productId, new Map());
+          }
+          productResults.get(result.productId).set(
+            result.ruleName,
+            result.details ? `${result.status}: ${result.details}` : result.status
+          );
+        });
+
+        // Write batch to response
+        for (const [productId, ruleResults] of productResults) {
+          const row = [
+            productId,
+            ...ruleNames.map(r => ruleResults.get(r.name) || 'N/A')
+          ];
+          res.write(row.join('\t') + '\n');
+        }
+      }
+
+      res.end();
 
       // Organisez les résultats par produit
       const productResults = new Map<string, Map<string, string>>();
