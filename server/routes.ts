@@ -581,7 +581,8 @@ app.delete("/api/rules/:id", async (req, res) => {
           created_at::text as created_at,
           rules_processed,
           total_rules,
-          error_count
+          error_count,
+          (octet_length(file_content) / 1024.0 / 1024.0)::numeric(10,2) as file_size_mb
         FROM audits
         ORDER BY created_at DESC
       `);
@@ -759,7 +760,8 @@ app.delete("/api/rules/:id", async (req, res) => {
           created_at as "createdAt",
           rules_processed as "rulesProcessed",
           total_rules as "totalRules",
-          error_count as "errorCount"
+          error_count as "errorCount",
+          column_mapping
         FROM audits
         WHERE id = ${parseInt(req.params.id)}
       `);
