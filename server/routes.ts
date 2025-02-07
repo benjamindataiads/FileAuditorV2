@@ -13,7 +13,12 @@ import { cleanField, cleanTsvContent, validateTsvStructure } from "./utils/csvCl
 import { Readable } from 'stream';
 import { stringify } from 'csv-stringify/sync';
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 200 * 1024 * 1024 // 200MB limit
+  }
+});
 
 // Add this function before registerRoutes
 async function processChunk(results: any[], auditId: number) {
