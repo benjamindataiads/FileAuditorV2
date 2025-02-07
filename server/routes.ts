@@ -62,11 +62,6 @@ async function processChunk(results: any[], auditId: number) {
 // Helper function to validate a single product
 async function validateProduct(product: any, selectedRules: any[], columnMapping: Record<string, string>) {
   const results = [];
-  console.log(`Processing product with rules:`, {
-    productId: product.identifiant || 'NO_ID',
-    ruleCount: selectedRules.length,
-    rules: selectedRules.map(r => r.id)
-  });
 
   // Create a mapped product with our field names
   const mappedProduct: Record<string, any> = {};
@@ -74,12 +69,19 @@ async function validateProduct(product: any, selectedRules: any[], columnMapping
     mappedProduct[appField] = product[fileColumn];
   });
 
-  // Find the ID column once
+  // Find the ID column by looking for the file column mapped to 'id'
   const idColumn = Object.entries(columnMapping)
-    .find(([_, appField]) => appField.toLowerCase() === 'identifiant')?.[0] || 
-    (product.identifiant ? 'identifiant' : null);
+    .find(([_, appField]) => appField.toLowerCase() === 'id')?.[0];
 
+  // Get product ID from the mapped column, fallback to NO_ID_MAPPED if not found
   const productId = idColumn && product[idColumn] ? product[idColumn] : 'NO_ID_MAPPED';
+
+  console.log(`Processing product with rules:`, {
+    productId,
+    ruleCount: selectedRules.length,
+    rules: selectedRules.map(r => r.id),
+    idColumn
+  });
 
   // Process each rule
   for (const rule of selectedRules) {

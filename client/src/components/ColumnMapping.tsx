@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { getFieldNames, getFrenchFieldName } from "@/lib/fieldMappings";
