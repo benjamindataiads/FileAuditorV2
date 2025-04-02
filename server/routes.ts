@@ -38,7 +38,7 @@ async function processChunk(results: any[], auditId: number) {
     // Process in batches of 100
     const BATCH_SIZE = 100;
     const batches = [];
-    
+
     for (let i = 0; i < validResults.length; i += BATCH_SIZE) {
       const batch = validResults.slice(i, i + BATCH_SIZE).map(result => ({
         auditId,
@@ -53,7 +53,7 @@ async function processChunk(results: any[], auditId: number) {
       const insertedResults = await db.insert(auditResults)
         .values(batch)
         .returning();
-      
+
       batches.push(...insertedResults);
     }
 
@@ -321,7 +321,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const fileContent = req.file.buffer.toString('utf-8');
       const columnMapping = JSON.parse(req.body.columnMapping);
-      
+
       // Validate TSV structure first
       const validation = validateTsvStructure(fileContent);
       if (!validation.isValid) {
@@ -377,11 +377,11 @@ export function registerRoutes(app: Express): Server {
         // If we still get an error, try to recover the data
         if (error.code === 'CSV_NON_TRIMABLE_CHAR_AFTER_CLOSING_QUOTE') {
           console.warn('Attempting to recover from CSV parsing error');
-          
+
           // Split into lines and process each line individually
           const lines = cleanContent.split('\n');
           const headers = lines[0].split('\t');
-          
+
           allRows = lines.slice(1).map((line, index) => {
             try {
               const fields = line.split('\t').map(cleanField);
@@ -443,7 +443,7 @@ export function registerRoutes(app: Express): Server {
       for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
         const batch = allRows.slice(i, i + BATCH_SIZE);
         const batchResults = [];
-        
+
         for (const record of batch) {
           const productResults = await validateProduct(record, rules, columnMapping);
           batchResults.push(...productResults);
@@ -454,7 +454,7 @@ export function registerRoutes(app: Express): Server {
 
         const progress = Math.floor((processedResults / (rules.length * totalRows)) * 100);
         console.log(`Progress: ${progress}% (${processedResults}/${rules.length * totalRows} rules processed)`);
-        
+
         await db.update(audits)
           .set({ 
             progress: progress,
@@ -637,14 +637,14 @@ app.delete("/api/rules/:id", async (req, res) => {
 
     // Convert to array and format for CSV
     const products = Object.values(groupedResults);
-    
+
     // Get all unique rule names
     const ruleNames = [...new Set(results
       .map(r => r.rule?.name)
       .filter(Boolean)
       .map(name => name.trim().replace(/[\t\n\r]/g, ' ').replace(/\s+/g, ' '))
     )].sort();
-    
+
     // Transform each product into a flat object
     return products.map((product: any) => {
       const row: any = { 
@@ -664,7 +664,7 @@ app.delete("/api/rules/:id", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
       const BATCH_SIZE = 1000;
-      
+
       const audit = await db.query.audits.findFirst({
         where: eq(audits.id, auditId)
       });
@@ -697,7 +697,7 @@ app.delete("/api/rules/:id", async (req, res) => {
       // Process products in batches
       for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
         const batchProductIds = productIds.slice(i, i + BATCH_SIZE);
-        
+
         const results = await db
           .select({
             productId: auditResults.productId,
@@ -785,6 +785,7 @@ app.delete("/api/rules/:id", async (req, res) => {
         canReprocess: false
       };
 
+      console.log(`Fetching results for audit ID: ${auditData.id}`);
       const results = await db.query.auditResults.findMany({
         where: eq(auditResults.auditId, auditData.id),
         with: {
@@ -794,6 +795,7 @@ app.delete("/api/rules/:id", async (req, res) => {
         offset: offset,
         orderBy: (results, { asc }) => [asc(results.productId)]
       });
+      console.log(`Found ${results.length} results for audit ID: ${auditData.id}`);
 
       const totalResults = await db.select({ count: sql`count(*)` })
         .from(auditResults)
@@ -874,7 +876,7 @@ app.delete("/api/rules/:id", async (req, res) => {
       for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
         const batch = allRows.slice(i, i + BATCH_SIZE);
         const batchResults = [];
-        
+
         for (const record of batch) {
           const productResults = await validateProduct(
             record, 
@@ -923,7 +925,7 @@ app.delete("/api/rules/:id", async (req, res) => {
   app.get("/api/audits/:id/rule-stats", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      
+
       const ruleStats = await db.execute<{
         rule: string;
         ok: number;
