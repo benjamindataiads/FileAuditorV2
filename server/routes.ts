@@ -677,13 +677,7 @@ app.delete("/api/rules/:id", async (req, res) => {
       res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="audit-${auditId}-results.tsv"`);
 
-      // First get distinct product IDs
-      const productIds = await db
-        .selectDistinct({ productId: auditResults.productId })
-        .from(auditResults)
-        .where(eq(auditResults.auditId, auditId));
-
-      // Get all rule names for headers
+      // Get all rule names for headers first
       const ruleNames = await db
         .selectDistinct({ name: rules.name })
         .from(rules)
@@ -694,9 +688,22 @@ app.delete("/api/rules/:id", async (req, res) => {
       const headers = ['Product ID', ...ruleNames.map(r => r.name)].join('\t');
       res.write(headers + '\n');
 
-      // Process products in batches
-      for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
-        const batchProductIds = productIds.slice(i, i + BATCH_SIZE);
+      // Get total count of distinct products
+      const totalCount = await db
+        .select({ count: sql`COUNT(DISTINCT ${auditResults.productId})` })
+        .from(auditResults)
+        .where(eq(auditResults.auditId, auditId));
+
+      const total = Number(totalCount[0].count);
+
+      // Process all products in batches
+      for (let offset = 0; offset < total; offset += BATCH_SIZE) {
+        const batchProductIds = await db
+          .selectDistinct({ productId: auditResults.productId })
+          .from(auditResults)
+          .where(eq(auditResults.auditId, auditId))
+          .limit(BATCH_SIZE)
+          .offset(offset);
 
         const results = await db
           .select({
