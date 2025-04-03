@@ -35,8 +35,8 @@ async function processChunk(results: any[], auditId: number) {
       return [];
     }
 
-    // Process in batches of 100
-    const BATCH_SIZE = 100;
+    // Process in larger batches
+    const BATCH_SIZE = 1000; // Increased batch size for better DB performance
     const batches = [];
 
     for (let i = 0; i < validResults.length; i += BATCH_SIZE) {
@@ -438,17 +438,19 @@ export function registerRoutes(app: Express): Server {
 
       let processedResults = 0;
 
-      // Process rows in batches
-      const BATCH_SIZE_PROCESS = 100;
+      // Process rows in larger batches with parallel processing
+      const BATCH_SIZE_PROCESS = 500; // Increased batch size
       for (let i = 0; i < allRows.length; i += BATCH_SIZE_PROCESS) {
         const batch = allRows.slice(i, i + BATCH_SIZE_PROCESS);
-        const batchResults = [];
+        
+        // Process products in parallel within the batch
+        const batchPromises = batch.map(record => validateProduct(record, rules, columnMapping));
+        const batchProductResults = await Promise.all(batchPromises);
+        
+        // Flatten results
+        const batchResults = batchProductResults.flat();
 
-        for (const record of batch) {
-          const productResults = await validateProduct(record, rules, columnMapping);
-          batchResults.push(...productResults);
-        }
-
+        // Process in larger chunks
         const results = await processChunk(batchResults, auditId);
         processedResults += results.length;
 
