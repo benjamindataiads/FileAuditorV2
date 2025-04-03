@@ -1,0 +1,85 @@
+AuditResults.tsx:34 Uncaught ReferenceError: useRef is not defined
+    at AuditResults (AuditResults.tsx:34:26)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=57ce50ed:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=57ce50ed:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=57ce50ed:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=57ce50ed:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=57ce50ed:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=57ce50ed:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=57ce50ed:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=57ce50ed:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=57ce50ed:19137:13)
+AuditResults @ AuditResults.tsx:34
+renderWithHooks @ chunk-RPCDYKBN.js?v=57ce50ed:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=57ce50ed:14926
+beginWork @ chunk-RPCDYKBN.js?v=57ce50ed:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=57ce50ed:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=57ce50ed:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=57ce50ed:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=57ce50ed:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=57ce50ed:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=57ce50ed:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=57ce50ed:19116
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=57ce50ed:18678
+workLoop @ chunk-RPCDYKBN.js?v=57ce50ed:197
+flushWork @ chunk-RPCDYKBN.js?v=57ce50ed:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=57ce50ed:384Understand this error
+AuditResults.tsx:34 Uncaught ReferenceError: useRef is not defined
+    at AuditResults (AuditResults.tsx:34:26)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=57ce50ed:11548:26)
+    at mountIndeterminateComponent (chunk-RPCDYKBN.js?v=57ce50ed:14926:21)
+    at beginWork (chunk-RPCDYKBN.js?v=57ce50ed:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=57ce50ed:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=57ce50ed:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=57ce50ed:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=57ce50ed:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=57ce50ed:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=57ce50ed:19137:13)
+AuditResults @ AuditResults.tsx:34
+renderWithHooks @ chunk-RPCDYKBN.js?v=57ce50ed:11548
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=57ce50ed:14926
+beginWork @ chunk-RPCDYKBN.js?v=57ce50ed:15914
+callCallback2 @ chunk-RPCDYKBN.js?v=57ce50ed:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=57ce50ed:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=57ce50ed:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=57ce50ed:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=57ce50ed:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=57ce50ed:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=57ce50ed:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=57ce50ed:18736
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=57ce50ed:18684
+workLoop @ chunk-RPCDYKBN.js?v=57ce50ed:197
+flushWork @ chunk-RPCDYKBN.js?v=57ce50ed:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=57ce50ed:384Understand this error
+chunk-RPCDYKBN.js?v=57ce50ed:14032 The above error occurred in the <AuditResults> component:
+
+    at AuditResults (https://00a0cb00-d70a-4d46-9e7e-e4590b704c65-00-ct3r1u1oupdc.spock.replit.dev:3003/src/pages/AuditResults.tsx:33:18)
+    at Route (https://00a0cb00-d70a-4d46-9e7e-e4590b704c65-00-ct3r1u1oupdc.spock.replit.dev:3003/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=57ce50ed:323:16)
+    at Switch (https://00a0cb00-d70a-4d46-9e7e-e4590b704c65-00-ct3r1u1oupdc.spock.replit.dev:3003/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=57ce50ed:379:17)
+    at Suspense
+    at ErrorBoundary (https://00a0cb00-d70a-4d46-9e7e-e4590b704c65-00-ct3r1u1oupdc.spock.replit.dev:3003/src/App.tsx:97:5)
+    at main
+    at div
+    at App
+    at QueryClientProvider (https://00a0cb00-d70a-4d46-9e7e-e4590b704c65-00-ct3r1u1oupdc.spock.replit.dev:3003/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=57ce50ed:2796:3)
+    at AppWrapper (https://00a0cb00-d70a-4d46-9e7e-e4590b704c65-00-ct3r1u1oupdc.spock.replit.dev:3003/src/main.tsx:9:30)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+logCapturedError @ chunk-RPCDYKBN.js?v=57ce50ed:14032
+update.callback @ chunk-RPCDYKBN.js?v=57ce50ed:14069
+callCallback @ chunk-RPCDYKBN.js?v=57ce50ed:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=57ce50ed:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=57ce50ed:17075
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=57ce50ed:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=57ce50ed:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=57ce50ed:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=57ce50ed:19353
+commitRoot @ chunk-RPCDYKBN.js?v=57ce50ed:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=57ce50ed:18760
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=57ce50ed:18718
+workLoop @ chunk-RPCDYKBN.js?v=57ce50ed:197
+flushWork @ chunk-RPCDYKBN.js?v=57ce50ed:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=57ce50ed:384Understand this error
+2client:698 [vite] Internal Server Error
+useRef is not defined
+    at AuditResults /home/runner/workspace/client/src/pages/AuditResults.tsx:34:26
