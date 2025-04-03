@@ -439,9 +439,9 @@ export function registerRoutes(app: Express): Server {
       let processedResults = 0;
 
       // Process rows in batches
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
-        const batch = allRows.slice(i, i + BATCH_SIZE);
+      const BATCH_SIZE_PROCESS = 100;
+      for (let i = 0; i < allRows.length; i += BATCH_SIZE_PROCESS) {
+        const batch = allRows.slice(i, i + BATCH_SIZE_PROCESS);
         const batchResults = [];
 
         for (const record of batch) {
@@ -663,7 +663,7 @@ app.delete("/api/rules/:id", async (req, res) => {
   app.get("/api/audits/:id/export", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const BATCH_SIZE = 1000;
+      const BATCH_SIZE = 500;
 
       const audit = await db.query.audits.findFirst({
         where: eq(audits.id, auditId)
@@ -673,82 +673,75 @@ app.delete("/api/rules/:id", async (req, res) => {
         return res.status(404).json({ message: "Audit not found" });
       }
 
-      // Stream the response
       res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="audit-${auditId}-results.tsv"`);
 
-      // Get all rule names for headers first
-      const ruleNames = await db
-        .selectDistinct({ name: rules.name })
-        .from(rules)
-        .innerJoin(auditResults, eq(auditResults.ruleId, rules.id))
-        .where(eq(auditResults.auditId, auditId));
+      await db.transaction(async (tx) => {
+        const ruleNames = await tx
+          .selectDistinct({ name: rules.name })
+          .from(rules)
+          .innerJoin(auditResults, eq(auditResults.ruleId, rules.id))
+          .where(eq(auditResults.auditId, auditId));
 
-      // Write headers
-      const headers = ['Product ID', ...ruleNames.map(r => r.name)].join('\t');
-      res.write(headers + '\n');
+        const headers = ['Product ID', ...ruleNames.map(r => r.name)].join('\t');
+        res.write(headers + '\n');
 
-      // Get total count of distinct products
-      const totalCount = await db
-        .select({ count: sql`COUNT(DISTINCT ${auditResults.productId})` })
-        .from(auditResults)
-        .where(eq(auditResults.auditId, auditId));
+        let offset = 0;
+        let lastProductId = '';
 
-      const total = Number(totalCount[0].count);
+        while (true) {
+          const batchProductIds = await tx
+            .select({ productId: auditResults.productId })
+            .from(auditResults)
+            .where(eq(auditResults.auditId, auditId))
+            .where(auditResults.productId.gt(lastProductId)) // added this line
+            .orderBy(auditResults.productId)
+            .limit(BATCH_SIZE);
 
-      // Process all products in batches
-      for (let offset = 0; offset < total; offset += BATCH_SIZE) {
-        const batchProductIds = await db
-          .selectDistinct({ productId: auditResults.productId })
-          .from(auditResults)
-          .where(eq(auditResults.auditId, auditId))
-          .limit(BATCH_SIZE)
-          .offset(offset);
+          if (batchProductIds.length === 0) break;
 
-        const results = await db
-          .select({
-            productId: auditResults.productId,
-            status: auditResults.status,
-            details: auditResults.details,
-            ruleName: rules.name,
-          })
-          .from(auditResults)
-          .leftJoin(rules, eq(auditResults.ruleId, rules.id))
-          .where(
-            and(
-              eq(auditResults.auditId, auditId),
-              inArray(auditResults.productId, batchProductIds.map(p => p.productId))
-            )
-          );
+          lastProductId = batchProductIds[batchProductIds.length-1].productId;
+          const results = await tx
+            .select({
+              productId: auditResults.productId,
+              status: auditResults.status,
+              details: auditResults.details,
+              ruleName: rules.name,
+            })
+            .from(auditResults)
+            .leftJoin(rules, eq(auditResults.ruleId, rules.id))
+            .where(
+              and(
+                eq(auditResults.auditId, auditId),
+                inArray(auditResults.productId, batchProductIds.map(p => p.productId))
+              )
+            );
 
-        // Process and write batch results
-        const productResults = new Map();
-        results.forEach(result => {
-          if (!result.ruleName) return;
-          if (!productResults.has(result.productId)) {
-            productResults.set(result.productId, new Map());
+
+          const productResults = new Map();
+          results.forEach(result => {
+            if (!result.ruleName) return;
+            if (!productResults.has(result.productId)) {
+              productResults.set(result.productId, new Map());
+            }
+            productResults.get(result.productId).set(
+              result.ruleName,
+              result.details ? `${result.status}: ${result.details}` : result.status
+            );
+          });
+
+          for (const [productId, ruleResults] of productResults) {
+            const row = [
+              productId,
+              ...ruleNames.map(r => ruleResults.get(r.name) || 'N/A')
+            ];
+            res.write(row.join('\t') + '\n');
           }
-          productResults.get(result.productId).set(
-            result.ruleName,
-            result.details ? `${result.status}: ${result.details}` : result.status
-          );
-        });
-
-        // Write batch to response
-        for (const [productId, ruleResults] of productResults) {
-          const row = [
-            productId,
-            ...ruleNames.map(r => ruleResults.get(r.name) || 'N/A')
-          ];
-          res.write(row.join('\t') + '\n');
         }
-      }
-
-      res.end();
-
+        res.end();
+      });
     } catch (error) {
       console.error('Export error:', error);
-      // Only send error response if headers haven't been sent
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to export audit results' });
       }
@@ -946,7 +939,7 @@ app.delete("/api/rules/:id", async (req, res) => {
             COUNT(DISTINCT ar.product_id)::float as count,
             CAST(
               (COUNT(DISTINCT ar.product_id)::float * 100.0) / 
-              NULLIF(SUM(COUNT(DISTINCT ar.product_id)) OVER (PARTITION BY r.name), 0)
+              NULLIF(SUM(COUNT(DISTINCT ar.productid)) OVER (PARTITION BY r.name), 0)
               AS DECIMAL(10,1)
             ) as percentage
           FROM audit_results ar

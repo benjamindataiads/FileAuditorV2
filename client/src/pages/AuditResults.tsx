@@ -21,11 +21,33 @@ export function AuditResults() {
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
-  const { data: audit, isLoading } = useQuery<Audit>({
-    queryKey: [`/api/audits/${id}`, page],
-    queryFn: () => fetch(`/api/audits/${id}?page=${page}&limit=100`).then(res => res.json()),
+  const { data: audit, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery<Audit>({
+    queryKey: [`/api/audits/${id}`],
+    queryFn: ({ pageParam = 1 }) => 
+      fetch(`/api/audits/${id}?page=${pageParam}&limit=100`).then(res => res.json()),
+    getNextPageParam: (lastPage) => 
+      lastPage.pagination?.page < lastPage.pagination?.totalPages ? lastPage.pagination.page + 1 : undefined,
     enabled: !!id,
   });
+
+  // Add intersection observer for infinite scroll
+  const observerTarget = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const reprocessMutation = useMutation({
     mutationFn: async () => {
