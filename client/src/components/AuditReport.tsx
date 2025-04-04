@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, CheckCircle, AlertTriangle, XCircle, MinusCircle } from "lucide-react";
+import { Download, CheckCircle, AlertTriangle, XCircle, MinusCircle, Loader2 } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -54,60 +54,61 @@ interface RuleStats {
 }
 
 export function AuditReport({ audit, onPageChange }: AuditReportProps) {
-  // Add type safety for the numbers
-  const totalProducts = Number(audit.totalProducts) || 0;
-  const compliantProducts = Number(audit.compliantProducts) || 0;
-  const warningProducts = Number(audit.warningProducts) || 0;
-  const criticalProducts = Number(audit.criticalProducts) || 0;
-
-  console.log('Audit data received:', {
-    totalProducts,
-    compliantProducts,
-    warningProducts,
-    criticalProducts,
-    fullAudit: audit
-  });
-  
   const [isExporting, setIsExporting] = useState(false);
-  const pieChartData = [
-    { name: "Compliant", value: audit.compliantProducts, color: "#22c55e" },
-    { name: "Warnings", value: audit.warningProducts, color: "#f59e0b" },
-    { name: "Critical", value: audit.criticalProducts, color: "#ef4444" },
-  ];
+  const [isLoading, setIsLoading] = useState(true);
+  const [processedResults, setProcessedResults] = useState<Record<string, Record<string, any>>>({});
 
-  const calculateComplianceScore = () => {
+  // Memoize calculations
+  const totalProducts = useMemo(() => Number(audit.totalProducts) || 0, [audit.totalProducts]);
+  const compliantProducts = useMemo(() => Number(audit.compliantProducts) || 0, [audit.compliantProducts]);
+  const warningProducts = useMemo(() => Number(audit.warningProducts) || 0, [audit.warningProducts]);
+  const criticalProducts = useMemo(() => Number(audit.criticalProducts) || 0, [audit.criticalProducts]);
+
+  const pieChartData = useMemo(() => [
+    { name: "Compliant", value: compliantProducts, color: "#22c55e" },
+    { name: "Warnings", value: warningProducts, color: "#f59e0b" },
+    { name: "Critical", value: criticalProducts, color: "#ef4444" },
+  ], [compliantProducts, warningProducts, criticalProducts]);
+
+  const calculateComplianceScore = useCallback(() => {
     if (totalProducts === 0) return 0;
     const score = ((compliantProducts + warningProducts * 0.5) / totalProducts) * 100;
     return Math.round(score);
-  };
+  }, [totalProducts, compliantProducts, warningProducts]);
 
-  const getGroupedResults = () => {
-    console.log("Processing audit results:", {
-      auditId: audit.id,
-      totalProducts: audit.totalProducts,
-      results: audit.results,
-      resultsLength: audit?.results?.length || 0
-    });
-    if (!audit?.results?.length) {
-      console.log("No results found in audit");
-      return {};
-    }
-    const grouped = audit.results.reduce((acc, result) => {
-      // Ensure we have a valid productId
-      if (!result.productId) {
-        console.log("Missing productId for result:", result);
+  // Process results in a useEffect to avoid blocking the main thread
+  useEffect(() => {
+    setIsLoading(true);
+    
+    // Use requestIdleCallback for non-critical processing
+    const processResults = () => {
+      if (!audit?.results?.length) {
+        setIsLoading(false);
+        return;
+      }
+
+      const resultsByProduct = audit.results.reduce((acc, result) => {
+        if (!result.productId) return acc;
+        if (!acc[result.productId]) {
+          acc[result.productId] = {};
+        }
+        if (result.rule?.name) {
+          acc[result.productId][result.rule.name] = result;
+        }
         return acc;
-      }
-      const key = result.productId;
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(result);
-      return acc;
-    }, {} as Record<string, Array<(typeof audit.results)[number]>>);
-    console.log("Grouped results by product:", grouped);
-    return grouped;
-  };
+      }, {} as Record<string, Record<string, any>>);
+
+      setProcessedResults(resultsByProduct);
+      setIsLoading(false);
+    };
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(processResults);
+    } else {
+      // Fallback for browsers that don't support requestIdleCallback
+      setTimeout(processResults, 0);
+    }
+  }, [audit.results]);
 
   const handleExport = async (format: 'tsv') => {
     try {
@@ -135,53 +136,13 @@ export function AuditReport({ audit, onPageChange }: AuditReportProps) {
     }
   };
 
-  // Get all unique rules and product IDs
-  const allRules = Array.from(new Set(audit.results?.map(r => r.rule?.name).filter(Boolean) || [])).sort();
-  const allProductIds = Array.from(new Set(audit.results?.map(r => r.productId) || [])).sort();
-  
-  // Calculate pagination
-  const itemsPerPage = 20;
-  const totalPages = Math.ceil(allProductIds.length / itemsPerPage);
-  const currentPage = Math.min(audit.pagination?.page || 1, totalPages);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, allProductIds.length);
-
-  // Get paginated product IDs
-  const paginatedProductIds = allProductIds.slice(startIndex, endIndex);
-  
-  // Group results by product ID for efficient lookup
-  const resultsByProduct = audit.results?.reduce((acc, result) => {
-    if (!acc[result.productId]) {
-      acc[result.productId] = {};
-    }
-    if (result.rule?.name) {
-      acc[result.productId][result.rule.name] = result;
-    }
-    return acc;
-  }, {} as Record<string, Record<string, typeof audit.results[0]>>);
-
-  const { data: ruleStats, error: ruleStatsError, isLoading: ruleStatsLoading } = useQuery<RuleStats[]>({
-    queryKey: [`/api/audits/${audit.id}/rule-stats`],
-    queryFn: async () => {
-      const response = await fetch(`/api/audits/${audit.id}/rule-stats`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch rule stats');
-      }
-      const data = await response.json();
-      console.log('Received rule stats:', data); // Debug log
-      return data;
-    },
-    retry: false, // Don't retry on failure
-    refetchOnWindowFocus: false, // Don't refetch when window regains focus
-  });
-
-  // Near the top of the component, add data validation
-  const validRuleStats = ruleStats?.map(stat => ({
-    ...stat,
-    ok: Number(stat.ok) || 0,
-    warning: Number(stat.warning) || 0,
-    critical: Number(stat.critical) || 0
-  })) || [];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>

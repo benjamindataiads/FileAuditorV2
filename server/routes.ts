@@ -665,7 +665,7 @@ app.delete("/api/rules/:id", async (req, res) => {
   app.get("/api/audits/:id/export", async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
-      const BATCH_SIZE = 500;
+      const BATCH_SIZE = 1000; // Increased batch size for better performance
 
       const audit = await db.query.audits.findFirst({
         where: eq(audits.id, auditId)
@@ -678,70 +678,70 @@ app.delete("/api/rules/:id", async (req, res) => {
       res.setHeader('Content-Type', 'text/tab-separated-values; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="audit-${auditId}-results.tsv"`);
 
-      await db.transaction(async (tx) => {
-        const ruleNames = await tx
-          .selectDistinct({ name: rules.name })
-          .from(rules)
-          .innerJoin(auditResults, eq(auditResults.ruleId, rules.id))
-          .where(eq(auditResults.auditId, auditId));
+      // Get all unique rule names in a single query
+      const ruleNames = await db.execute(sql`
+        SELECT DISTINCT r.name
+        FROM rules r
+        JOIN audit_results ar ON ar.rule_id = r.id
+        WHERE ar.audit_id = ${auditId}
+        ORDER BY r.name
+      `);
 
-        const headers = ['Product ID', ...ruleNames.map(r => r.name)].join('\t');
-        res.write(headers + '\n');
+      // Write headers
+      const headers = ['Product ID', ...ruleNames.rows.map(r => r.name)].join('\t');
+      res.write(headers + '\n');
 
-        let offset = 0;
-        let lastProductId = '';
+      // Stream results in batches
+      let lastProductId = '';
+      while (true) {
+        const batch = await db.execute(sql`
+          WITH product_batch AS (
+            SELECT DISTINCT product_id
+            FROM audit_results
+            WHERE audit_id = ${auditId}
+              AND product_id > ${lastProductId}
+            ORDER BY product_id
+            LIMIT ${BATCH_SIZE}
+          )
+          SELECT 
+            ar.product_id,
+            ar.status,
+            ar.details,
+            r.name as rule_name
+          FROM product_batch pb
+          JOIN audit_results ar ON ar.product_id = pb.product_id AND ar.audit_id = ${auditId}
+          JOIN rules r ON ar.rule_id = r.id
+          ORDER BY ar.product_id, r.name
+        `);
 
-        while (true) {
-          const batchProductIds = await tx
-            .select({ productId: auditResults.productId })
-            .from(auditResults)
-            .where(eq(auditResults.auditId, auditId))
-            .where(auditResults.productId.gt(lastProductId)) // added this line
-            .orderBy(auditResults.productId)
-            .limit(BATCH_SIZE);
+        if (batch.rows.length === 0) break;
 
-          if (batchProductIds.length === 0) break;
-
-          lastProductId = batchProductIds[batchProductIds.length-1].productId;
-          const results = await tx
-            .select({
-              productId: auditResults.productId,
-              status: auditResults.status,
-              details: auditResults.details,
-              ruleName: rules.name,
-            })
-            .from(auditResults)
-            .leftJoin(rules, eq(auditResults.ruleId, rules.id))
-            .where(
-              and(
-                eq(auditResults.auditId, auditId),
-                inArray(auditResults.productId, batchProductIds.map(p => p.productId))
-              )
-            );
-
-
-          const productResults = new Map();
-          results.forEach(result => {
-            if (!result.ruleName) return;
-            if (!productResults.has(result.productId)) {
-              productResults.set(result.productId, new Map());
-            }
-            productResults.get(result.productId).set(
-              result.ruleName,
-              result.details ? `${result.status}: ${result.details}` : result.status
-            );
-          });
-
-          for (const [productId, ruleResults] of productResults) {
-            const row = [
-              productId,
-              ...ruleNames.map(r => ruleResults.get(r.name) || 'N/A')
-            ];
-            res.write(row.join('\t') + '\n');
+        // Group results by product ID
+        const productResults = new Map();
+        batch.rows.forEach(result => {
+          if (!result.rule_name) return;
+          if (!productResults.has(result.product_id)) {
+            productResults.set(result.product_id, new Map());
           }
+          productResults.get(result.product_id).set(
+            result.rule_name,
+            result.details ? `${result.status}: ${result.details}` : result.status
+          );
+        });
+
+        // Write batch results
+        for (const [productId, ruleResults] of productResults) {
+          const row = [
+            productId,
+            ...ruleNames.rows.map(r => ruleResults.get(r.name) || 'N/A')
+          ];
+          res.write(row.join('\t') + '\n');
         }
-        res.end();
-      });
+
+        lastProductId = batch.rows[batch.rows.length - 1].product_id;
+      }
+
+      res.end();
     } catch (error) {
       console.error('Export error:', error);
       if (!res.headersSent) {
@@ -752,10 +752,11 @@ app.delete("/api/rules/:id", async (req, res) => {
 
   app.get("/api/audits/:id", async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 100;
+    const limit = parseInt(req.query.limit as string) || 50; // Reduced default limit
     const offset = (page - 1) * limit;
 
     try {
+      // First get the audit metadata
       const audit = await db.execute(sql`
         SELECT 
           id, 
@@ -775,8 +776,6 @@ app.delete("/api/rules/:id", async (req, res) => {
         WHERE id = ${parseInt(req.params.id)}
       `);
 
-      console.log('Audit data from database:', audit.rows[0]);
-
       if (!audit.rows[0]) {
         return res.status(404).json({ message: "Audit not found" });
       }
@@ -787,21 +786,38 @@ app.delete("/api/rules/:id", async (req, res) => {
         canReprocess: false
       };
 
-      console.log(`Fetching results for audit ID: ${auditData.id}`);
-      const results = await db.query.auditResults.findMany({
-        where: eq(auditResults.auditId, auditData.id),
-        with: {
-          rule: true
-        },
-        limit: limit,
-        offset: offset,
-        orderBy: (results, { asc }) => [asc(results.productId)]
-      });
-      console.log(`Found ${results.length} results for audit ID: ${auditData.id}`);
+      // Get results with optimized query
+      const results = await db.execute(sql`
+        WITH product_results AS (
+          SELECT 
+            ar.product_id,
+            ar.status,
+            ar.details,
+            r.name as rule_name,
+            r.id as rule_id,
+            ROW_NUMBER() OVER (PARTITION BY ar.product_id ORDER BY r.name) as rn
+          FROM audit_results ar
+          JOIN rules r ON ar.rule_id = r.id
+          WHERE ar.audit_id = ${auditData.id}
+          ORDER BY ar.product_id, r.name
+          LIMIT ${limit}
+          OFFSET ${offset}
+        )
+        SELECT 
+          product_id as "productId",
+          status,
+          details,
+          rule_name as "ruleName",
+          rule_id as "ruleId"
+        FROM product_results
+        ORDER BY product_id, rule_name
+      `);
 
-      const totalResults = await db.select({ count: sql`count(*)` })
-        .from(auditResults)
-        .where(eq(auditResults.auditId, auditData.id));
+      const totalResults = await db.execute(sql`
+        SELECT COUNT(DISTINCT product_id) as count
+        FROM audit_results
+        WHERE audit_id = ${auditData.id}
+      `);
 
       res.json({
         ...auditData,
@@ -809,12 +825,12 @@ app.delete("/api/rules/:id", async (req, res) => {
         compliantProducts: Number(auditData.compliantProducts),
         warningProducts: Number(auditData.warningProducts),
         criticalProducts: Number(auditData.criticalProducts),
-        results,
+        results: results.rows,
         pagination: {
-          total: totalResults[0].count,
+          total: Number(totalResults.rows[0].count),
           page,
           limit,
-          totalPages: Math.ceil(totalResults[0].count / limit)
+          totalPages: Math.ceil(Number(totalResults.rows[0].count) / limit)
         }
       });
     } catch (error) {
