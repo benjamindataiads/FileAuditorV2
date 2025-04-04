@@ -1,0 +1,34 @@
+2934	ID Check	Verifies that the product ID is not empty	Required Fields	{"type":"notEmpty","field":"id"}	critical
+2935	Title Check	Verifies that the product title is not empty	Required Fields	{"type":"notEmpty","field":"title"}	critical
+2936	Description Check	Verifies that the product description is not empty	Required Fields	{"type":"notEmpty","field":"description"}	critical
+2937	Link Check	Verifies that the product link is not empty	Required Fields	{"type":"notEmpty","field":"link"}	critical
+2938	Image Link Check	Verifies that the product image link is not empty	Required Fields	{"type":"notEmpty","field":"image_link"}	critical
+2939	Additional Image Link Check	Verifies that the additional image link is not empty	Required Fields	{"type":"notEmpty","field":"additional_image_link"}	critical
+2940	Availability Check	Verifies that the product availability is specified	Required Fields	{"type":"notEmpty","field":"availability"}	critical
+2941	Price Check	Verifies that the product price is not empty	Required Fields	{"type":"notEmpty","field":"price"}	critical
+2942	Brand Check	Verifies that the product brand is not empty	Required Fields	{"type":"notEmpty","field":"brand"}	critical
+2943	GTIN Check	Verifies that the product GTIN is not empty	Required Fields	{"type":"notEmpty","field":"gtin"}	critical
+2944	Google Product Category Check	Verifies that the Google product category is specified	Required Fields	{"type":"notEmpty","field":"google_product_category"}	critical
+2945	Product Type Check	Verifies that the product type is specified	Required Fields	{"type":"notEmpty","field":"product_type"}	critical
+2946	Item Group ID Check	Verifies that the item group ID is not empty	Required Fields	{"type":"notEmpty","field":"item_group_id"}	critical
+2947	Color Check	Verifies that the product color is specified	Required Fields	{"type":"notEmpty","field":"color"}	critical
+2948	Size Check	Verifies that the product size is specified	Required Fields	{"type":"notEmpty","field":"size"}	critical
+2949	Material Check	Verifies that the product material is specified	Required Fields	{"type":"notEmpty","field":"material"}	critical
+2950	Age Group Check	Verifies that the age group is specified	Required Fields	{"type":"notEmpty","field":"age_group"}	critical
+2951	Gender Check	Verifies that the gender is specified	Required Fields	{"type":"notEmpty","field":"gender"}	critical
+2952	Product Highlight Check	Verifies that product highlights are specified	Required Fields	{"type":"notEmpty","field":"product_highlight"}	warning
+2953	Title at least 70 caracters	Title at least 70 caracters	fields optimal length	{"type":"minLength","field":"title","value":70,"caseSensitive":false}	warning
+2955	Title maximum 150 caracters	Title maximum 150 caracters	fields optimal length	{"type":"maxLength","field":"title","value":"150","caseSensitive":false}	critical
+2956	description at least 500 caracters	description at least 500 caracters	fields optimal length	{"type":"minLength","field":"description","value":500,"caseSensitive":false}	warning
+2957	description must not exceed 1000 characters	description must not exceed 1000 characters	fields optimal length	{"type":"maxLength","field":"description","value":"1000","caseSensitive":false}	critical
+2958	color must not exceed 100 characters	color must not exceed 100 characters	fields optimal length	{"type":"maxLength","field":"color","value":"100","caseSensitive":false}	critical
+2959	product type must not exceed 750 characters	product type must not exceed 750 characters	fields optimal length	{"type":"maxLength","field":"product_type","value":"750","caseSensitive":false}	critical
+2960	Title contains brand	Title contains brand	data quality	{"type":"crossField","field":"title","value":{"field":"brand","operator":"contains"},"caseSensitive":false}	critical
+2961	Title contains color	Title contains color	data quality	{"type":"crossField","field":"title","value":{"field":"color","operator":"contains"},"caseSensitive":false}	warning
+2962	Title contains size	Title contains size	data quality	{"type":"crossField","field":"title","value":{"field":"size","operator":"contains"},"caseSensitive":false}	warning
+2963	Title contains material	Title contains material	data quality	{"type":"crossField","field":"title","value":{"field":"material","operator":"contains"},"caseSensitive":false}	warning
+2964	description contains brand	description contains brand	data quality	{"type":"crossField","field":"description","value":{"field":"brand","operator":"contains"},"caseSensitive":false}	critical
+2965	description contains color	description contains color	data quality	{"type":"crossField","field":"description","value":{"field":"color","operator":"contains"},"caseSensitive":false}	critical
+2966	description contains material	description contains material	data quality	{"type":"crossField","field":"description","value":{"field":"material","operator":"contains"},"caseSensitive":false}	warning
+2967	description doesn't contain €	description doesn't contain €	data quality	{"type":"doesntContain","field":"description","value":"€","caseSensitive":false}	warning
+2968	description doesn't contain %	description doesn't contain %	data quality	{"type":"doesntContain","field":"description","value":"%","caseSensitive":false}	warning
