@@ -3,6 +3,30 @@
 
 This document details the exact validation logic for each rule in the product feed audit system.
 
+## Current Rules Database
+
+| ID | Name | Description | Category | Criticality | Validation Type |
+|----|------|-------------|-----------|-------------|----------------|
+| 1 | ID Check | Verifies that the product ID is not empty | Required Fields | Critical | notEmpty |
+| 2 | Title Check | Verifies that the product title is not empty | Required Fields | Critical | notEmpty |
+| 3 | Description Check | Verifies that the product description is not empty | Required Fields | Critical | notEmpty |
+| 4 | Link Check | Verifies that the product link is not empty | Required Fields | Critical | notEmpty |
+| 5 | Image Link Check | Verifies that the product image link is not empty | Required Fields | Critical | notEmpty |
+| 6 | Additional Image Link Check | Verifies that the additional image link is not empty | Required Fields | Critical | notEmpty |
+| 7 | Availability Check | Verifies that the product availability is specified | Required Fields | Critical | notEmpty |
+| 8 | Price Check | Verifies that the product price is not empty | Required Fields | Critical | notEmpty |
+| 9 | Brand Check | Verifies that the product brand is not empty | Required Fields | Critical | notEmpty |
+| 10 | GTIN Check | Verifies that the product GTIN is not empty | Required Fields | Critical | notEmpty |
+| 11 | Google Product Category Check | Verifies that the Google product category is specified | Required Fields | Critical | notEmpty |
+| 12 | Product Type Check | Verifies that the product type is specified | Required Fields | Critical | notEmpty |
+| 13 | Item Group ID Check | Verifies that the item group ID is not empty | Required Fields | Critical | notEmpty |
+| 14 | Color Check | Verifies that the product color is specified | Required Fields | Critical | notEmpty |
+| 15 | Size Check | Verifies that the product size is specified | Required Fields | Critical | notEmpty |
+| 16 | Material Check | Verifies that the product material is specified | Required Fields | Critical | notEmpty |
+| 17 | Age Group Check | Verifies that the age group is specified | Required Fields | Critical | notEmpty |
+| 18 | Gender Check | Verifies that the gender is specified | Required Fields | Critical | notEmpty |
+| 19 | Product Highlight Check | Verifies that product highlights are specified | Required Fields | Warning | notEmpty |
+
 ## Rule Types Overview
 
 All rules have a `criticality` level that can be either:
@@ -12,8 +36,6 @@ All rules have a `criticality` level that can be either:
 ## Validation Logic by Rule Type
 
 ### 1. Not Empty Check (`notEmpty`)
-Rules: ID Check, Title Check, Description Check, Link Check, Image Link Check, Additional Image Link Check, Availability Check, Price Check, Brand Check, GTIN Check, Google Product Category Check, Product Type Check, Item Group ID Check, Color Check, Size Check, Material Check, Age Group Check, Gender Check, Product Highlight Check
-
 **Logic:**
 ```typescript
 const value = product[field]?.toString()
@@ -93,7 +115,7 @@ if (isNaN(value) || value < range.min || value > range.max) {
 }
 return {
   status: "ok",
-  message: `Value is within allowed range`
+  message: "Value is within allowed range"
 }
 ```
 
