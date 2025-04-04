@@ -3,35 +3,48 @@
 
 This document details the exact validation logic for each rule in the product feed audit system.
 
-## Current Rules Database
+## Complete Rules Database
 
-| ID | Name | Description | Category | Criticality | Validation Type |
-|----|------|-------------|-----------|-------------|----------------|
-| 1 | ID Check | Verifies that the product ID is not empty | Required Fields | Critical | notEmpty |
-| 2 | Title Check | Verifies that the product title is not empty | Required Fields | Critical | notEmpty |
-| 3 | Description Check | Verifies that the product description is not empty | Required Fields | Critical | notEmpty |
-| 4 | Link Check | Verifies that the product link is not empty | Required Fields | Critical | notEmpty |
-| 5 | Image Link Check | Verifies that the product image link is not empty | Required Fields | Critical | notEmpty |
-| 6 | Additional Image Link Check | Verifies that the additional image link is not empty | Required Fields | Critical | notEmpty |
-| 7 | Availability Check | Verifies that the product availability is specified | Required Fields | Critical | notEmpty |
-| 8 | Price Check | Verifies that the product price is not empty | Required Fields | Critical | notEmpty |
-| 9 | Brand Check | Verifies that the product brand is not empty | Required Fields | Critical | notEmpty |
-| 10 | GTIN Check | Verifies that the product GTIN is not empty | Required Fields | Critical | notEmpty |
-| 11 | Google Product Category Check | Verifies that the Google product category is specified | Required Fields | Critical | notEmpty |
-| 12 | Product Type Check | Verifies that the product type is specified | Required Fields | Critical | notEmpty |
-| 13 | Item Group ID Check | Verifies that the item group ID is not empty | Required Fields | Critical | notEmpty |
-| 14 | Color Check | Verifies that the product color is specified | Required Fields | Critical | notEmpty |
-| 15 | Size Check | Verifies that the product size is specified | Required Fields | Critical | notEmpty |
-| 16 | Material Check | Verifies that the product material is specified | Required Fields | Critical | notEmpty |
-| 17 | Age Group Check | Verifies that the age group is specified | Required Fields | Critical | notEmpty |
-| 18 | Gender Check | Verifies that the gender is specified | Required Fields | Critical | notEmpty |
-| 19 | Product Highlight Check | Verifies that product highlights are specified | Required Fields | Warning | notEmpty |
+| ID | Name | Description | Category | Condition | Criticality | Created At |
+|----|------|-------------|-----------|-----------|-------------|------------|
+| 1 | ID Check | Verifies that the product ID is not empty | Required Fields | `{"type": "notEmpty", "field": "id"}` | critical | Default |
+| 2 | Title Check | Verifies that the product title is not empty | Required Fields | `{"type": "notEmpty", "field": "title"}` | critical | Default |
+| 3 | Description Check | Verifies that the product description is not empty | Required Fields | `{"type": "notEmpty", "field": "description"}` | critical | Default |
+| 4 | Link Check | Verifies that the product link is not empty | Required Fields | `{"type": "notEmpty", "field": "link"}` | critical | Default |
+| 5 | Image Link Check | Verifies that the product image link is not empty | Required Fields | `{"type": "notEmpty", "field": "image_link"}` | critical | Default |
+| 6 | Additional Image Link Check | Verifies that the additional image link is not empty | Required Fields | `{"type": "notEmpty", "field": "additional_image_link"}` | critical | Default |
+| 7 | Availability Check | Verifies that the product availability is specified | Required Fields | `{"type": "notEmpty", "field": "availability"}` | critical | Default |
+| 8 | Price Check | Verifies that the product price is not empty | Required Fields | `{"type": "notEmpty", "field": "price"}` | critical | Default |
+| 9 | Brand Check | Verifies that the product brand is not empty | Required Fields | `{"type": "notEmpty", "field": "brand"}` | critical | Default |
+| 10 | GTIN Check | Verifies that the product GTIN is not empty | Required Fields | `{"type": "notEmpty", "field": "gtin"}` | critical | Default |
+| 11 | Google Product Category Check | Verifies that the Google product category is specified | Required Fields | `{"type": "notEmpty", "field": "google_product_category"}` | critical | Default |
+| 12 | Product Type Check | Verifies that the product type is specified | Required Fields | `{"type": "notEmpty", "field": "product_type"}` | critical | Default |
+| 13 | Item Group ID Check | Verifies that the item group ID is not empty | Required Fields | `{"type": "notEmpty", "field": "item_group_id"}` | critical | Default |
+| 14 | Color Check | Verifies that the product color is specified | Required Fields | `{"type": "notEmpty", "field": "color"}` | critical | Default |
+| 15 | Size Check | Verifies that the product size is specified | Required Fields | `{"type": "notEmpty", "field": "size"}` | critical | Default |
+| 16 | Material Check | Verifies that the product material is specified | Required Fields | `{"type": "notEmpty", "field": "material"}` | critical | Default |
+| 17 | Age Group Check | Verifies that the age group is specified | Required Fields | `{"type": "notEmpty", "field": "age_group"}` | critical | Default |
+| 18 | Gender Check | Verifies that the gender is specified | Required Fields | `{"type": "notEmpty", "field": "gender"}` | critical | Default |
+| 19 | Product Highlight Check | Verifies that product highlights are specified | Required Fields | `{"type": "notEmpty", "field": "product_highlight"}` | warning | Default |
 
 ## Rule Types Overview
 
 All rules have a `criticality` level that can be either:
 - `critical`: Failure indicates a serious compliance issue
 - `warning`: Failure indicates a recommended improvement
+
+## Validation Types
+
+The system supports the following validation types:
+- `notEmpty`: Checks if a field has content
+- `minLength`: Validates minimum character length
+- `maxLength`: Validates maximum character length
+- `contains`: Checks if field contains specific text
+- `doesntContain`: Checks if field doesn't contain specific text
+- `regex`: Validates against a regular expression pattern
+- `range`: Validates numerical values within a range
+- `crossField`: Compares values between fields
+- `date`: Validates date format and value
 
 ## Validation Logic by Rule Type
 
