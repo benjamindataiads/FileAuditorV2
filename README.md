@@ -108,6 +108,86 @@ npm run dev
 
 The application will be available at `http://localhost:5000`
 
+## Default Rules
+The application comes with a set of predefined validation rules:
+
+### Required Fields Category
+1. **ID Check**
+   - Description: Verifies that the product ID is not empty
+   - Criticality: Critical
+
+2. **Title Check**
+   - Description: Verifies that the product title is not empty
+   - Criticality: Critical
+
+3. **Description Check**
+   - Description: Verifies that the product description is not empty
+   - Criticality: Critical
+
+4. **Link Check**
+   - Description: Verifies that the product link is not empty
+   - Criticality: Critical
+
+5. **Image Link Check**
+   - Description: Verifies that the product image link is not empty
+   - Criticality: Critical
+
+6. **Additional Image Link Check**
+   - Description: Verifies that the additional image link is not empty
+   - Criticality: Critical
+
+7. **Availability Check**
+   - Description: Verifies that the product availability is specified
+   - Criticality: Critical
+
+8. **Price Check**
+   - Description: Verifies that the product price is not empty
+   - Criticality: Critical
+
+9. **Brand Check**
+   - Description: Verifies that the product brand is not empty
+   - Criticality: Critical
+
+10. **GTIN Check**
+    - Description: Verifies that the product GTIN is not empty
+    - Criticality: Critical
+
+11. **Google Product Category Check**
+    - Description: Verifies that the Google product category is specified
+    - Criticality: Critical
+
+12. **Product Type Check**
+    - Description: Verifies that the product type is specified
+    - Criticality: Critical
+
+13. **Item Group ID Check**
+    - Description: Verifies that the item group ID is not empty
+    - Criticality: Critical
+
+14. **Color Check**
+    - Description: Verifies that the product color is specified
+    - Criticality: Critical
+
+15. **Size Check**
+    - Description: Verifies that the product size is specified
+    - Criticality: Critical
+
+16. **Material Check**
+    - Description: Verifies that the product material is specified
+    - Criticality: Critical
+
+17. **Age Group Check**
+    - Description: Verifies that the age group is specified
+    - Criticality: Critical
+
+18. **Gender Check**
+    - Description: Verifies that the gender is specified
+    - Criticality: Critical
+
+19. **Product Highlight Check**
+    - Description: Verifies that product highlights are specified
+    - Criticality: Warning
+
 ## Environment Variables
 The application uses PostgreSQL for data storage. Configure your database connection using the following environment variable:
 - `DATABASE_URL`: PostgreSQL connection string
